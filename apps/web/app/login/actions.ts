@@ -1,8 +1,29 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isAllowed } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
+
+/** Sign in with Google: only @dhumal.com Google accounts are offered; /auth/callback checks the allow list. */
+export async function signInWithGoogle(): Promise<void> {
+  // SITE_URL in production; locally, the address this request came in on. Supabase only accepts
+  // return addresses on its allow list, so a forged Host header cannot redirect elsewhere.
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? (/^(127\.0\.0\.1|localhost)(:|$)/.test(host) ? "http" : "https");
+  const origin = process.env.SITE_URL || `${proto}://${host}`;
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback`,
+      queryParams: { hd: process.env.GOOGLE_WORKSPACE_DOMAIN ?? "dhumal.com", prompt: "select_account" },
+    },
+  });
+  if (error || !data.url) redirect("/login?error=google");
+  redirect(data.url);
+}
 
 export type LoginState = { step: "email" | "code"; email?: string; error?: string; info?: string };
 

@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // Refreshes the Supabase session cookie on every page request and sends signed-out visitors to /login.
 // This is only an optimistic check; pages and actions re-check with requireUser() (lib/auth.ts).
 
-const PUBLIC = ["/login"];
+const PUBLIC = ["/login", "/auth/callback"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
