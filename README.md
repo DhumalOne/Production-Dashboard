@@ -30,3 +30,5 @@ Sign-in codes arrive in the local mail catcher at http://127.0.0.1:55424.
 | `cd agent; .venv\Scripts\python -m discovery.check_registry` | Every synced field is valid against live SAP |
 | `cd apps/web; npm test; npm run typecheck; npx eslint .` | Formatting, Indian FY periods, types, lint |
 | `cd apps/web; node --env-file=.env.local scripts/dev-smoke.mjs` | End to end: OTP sign-in, every page renders data, sign-out everywhere |
+| `cd apps/web; npx next build; npx next start -p 3101; node scripts/pwa-check.mjs` | Phone install: manifest, icons, service worker, security headers |
+| `cd agent; .venv\Scripts\python -m discovery.uat_checklist` | Regenerates `docs/uat-checklist.md` with current dashboard figures |

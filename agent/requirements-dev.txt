@@ -1,2 +1,4 @@
 -r requirements.txt
 psycopg[binary]==3.2.10   # PgSink: ingest straight into a local database during development
+tzdata                    # time zones on Windows (discovery/uat_checklist.py)
+pillow                    # apps/web/scripts/make-icons.py

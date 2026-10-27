@@ -8,6 +8,14 @@ $python = Join-Path $agent ".venv\Scripts\python.exe"
 if (-not (Test-Path $python)) { throw "Create the venv first: python -m venv .venv; .venv\Scripts\pip install -r requirements.txt" }
 if (-not (Test-Path (Join-Path $agent "config.toml"))) { throw "config.toml is missing" }
 
+# Refuse to install until the cloud side exists; otherwise the service would fail every cycle.
+& $python -c "from dhumal_sync import config; c = config.load(); assert c.cloud.ingest_url.startswith('https://') and len(c.cloud.api_key) >= 32, 'set cloud.ingest_url (https) and cloud.api_key (32+ chars) in config.toml'" 2>&1
+if ($LASTEXITCODE -ne 0) { throw "config.toml: cloud settings are not filled in yet" }
+
+# Prove SAP and the cloud are reachable with one cycle before installing.
+& $python -m dhumal_sync --once
+if ($LASTEXITCODE -ne 0) { throw "Test cycle failed; see state\logs\sync.log. Not installing." }
+
 nssm install $Name $python "-m" "dhumal_sync"
 nssm set $Name AppDirectory $agent
 nssm set $Name DisplayName "Dhumal Dashboard Sync (read-only)"

@@ -22,10 +22,10 @@ Each sheet of "Dhumal Management Dashboard V9" (last data Feb 2016) and the scre
 | Setup (hidden) | Not needed; periods are computed (Indian FY, IST) | — |
 
 ## Before the demo on 13 Nov
-- Deploy to Supabase and Vercel in Mumbai (Q-IT-4, Q-MD-1).
-- Make the app installable on a phone: manifest, icons, offline cache.
-- Install the agent as a Windows service on the office PC (Q-IT-2).
-- Run the UAT checklist: compare Home figures with SAP reports for 5 dates.
+- [ ] Deploy to Supabase and Vercel in Mumbai (Q-IT-4, Q-MD-1).
+- [x] Installable on a phone: manifest, icons, offline cache with a "cached" banner; cache cleared on sign-out (`apps/web/scripts/pwa-check.mjs`).
+- [ ] Install the agent as a Windows service on the office PC (Q-IT-2). `agent/install_service.ps1` is ready; it refuses to install until the cloud settings exist, and runs one test cycle first.
+- [ ] Run the UAT checklist with Accounts: [uat-checklist.md](uat-checklist.md) has the dashboard figures pre-filled for 5 dates (`python -m discovery.uat_checklist` refreshes them).
 
 ## After the demo (PRD §5–6)
 - AI box: text-to-SQL over the `rpt` views, read-only role, shows its query.

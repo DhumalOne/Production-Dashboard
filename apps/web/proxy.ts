@@ -38,6 +38,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Not for the agent's ingest API, static files, the manifest, icons or the service worker.
-  matcher: ["/((?!api/ingest|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons/).*)"],
+  // Not for the agent's ingest API, static files, the manifest, icons or the service worker
+  // (the phone fetches the manifest and icons when adding to the home screen).
+  matcher: ["/((?!api/ingest|_next/static|_next/image|manifest.webmanifest|sw.js|icons/|icon.png|apple-icon.png).*)"],
 };
