@@ -1,0 +1,24 @@
+# Copy to config.toml (gitignored) and fill in. Never commit real credentials.
+
+[sap]
+# SAP Business One Service Layer (read-only user, e.g. DASHREAD).
+base_url = "https://sapserver:50000/b1s/v2/"
+ca_file = 'C:\path\to\sap-ca.crt'     # corporate CA that signed the Service Layer certificate
+user = "DASHREAD"
+password = ""
+companies = ["DHUMAL_LIVE"]
+page_size = 100                        # documents per page
+page_delay_ms = 200                    # pause between pages to keep SAP load low
+
+[cloud]
+ingest_url = "https://<app>.vercel.app/api/ingest"
+heartbeat_url = "https://<app>.vercel.app/api/heartbeat"
+api_key = ""
+
+[schedule]
+interval_minutes = 15
+office_start = "07:00"
+office_end = "21:00"
+full_refresh_at = "02:00"
+heartbeat_minutes = 5
+recent_days = 60

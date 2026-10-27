@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* Design tokens. One accent colour; green/red only for good/bad change, always with a sign or arrow. */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #eef0f3;
+  --border: #dfe2e7;
+  --text: #15181c;
+  --muted: #5b6370;
+  --accent: #1f4fd1;
+  --accent-soft: #e6ecfb;
+  --good: #11784f;
+  --bad: #b42a2a;
+  --warn: #9a5b00;
+  --warn-soft: #fdf1dc;
+  --bad-soft: #fbe7e7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1114;
+    --surface: #181b20;
+    --surface-2: #20242a;
+    --border: #2c3138;
+    --text: #e8eaed;
+    --muted: #9aa2ad;
+    --accent: #7f9dff;
+    --accent-soft: #1d2640;
+    --good: #4cc38a;
+    --bad: #f07070;
+    --warn: #f0b04c;
+    --warn-soft: #33270f;
+    --bad-soft: #3a1c1c;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad-soft: var(--bad-soft);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: light dark;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}

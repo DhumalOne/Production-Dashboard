@@ -1,0 +1,23 @@
+# Secrets
+agent/config.toml
+.env
+.env.*
+!.env.example
+
+# Python
+agent/.venv/
+__pycache__/
+*.pyc
+agent/state/
+
+# Node
+node_modules/
+.next/
+.vercel/
+
+# Discovery output can contain business data
+agent/discovery/output/
+
+# Business workbooks (e.g. the V9 Excel dashboard) stay out of Git
+*.xlsx
+*.xls

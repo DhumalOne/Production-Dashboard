@@ -1,0 +1,5 @@
+# Store text files with LF in the repository on every platform (SQL, shell, deployment).
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.ico binary
