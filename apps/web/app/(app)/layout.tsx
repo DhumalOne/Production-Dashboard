@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { AskBox } from "@/components/ask-box";
 import { BottomNav, BottomNavView, SideNav, SideNavView } from "@/components/nav";
 import { requireUser } from "@/lib/auth";
 
@@ -13,11 +14,13 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       <Suspense fallback={<SideNavView pathname="" />}>
         <SideNav />
       </Suspense>
-      <div className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-8">
+      {/* Bottom space: phone = bottom bar (3.5rem) + Ask bar (4rem); desktop = Ask bar. */}
+      <div className="min-w-0 flex-1 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-24">
         <Suspense>
           <Guard>{children}</Guard>
         </Suspense>
       </div>
+      <AskBox />
       <Suspense fallback={<BottomNavView pathname="" />}>
         <BottomNav />
       </Suspense>
