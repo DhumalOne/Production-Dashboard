@@ -70,7 +70,9 @@ export function AskBox() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
-  useEffect(() => endRef.current?.scrollIntoView({ block: "end" }), [thread, busy]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" }); // newer browsers return a Promise here; an effect must not
+  }, [thread, busy]);
 
   async function submit(q: string) {
     const text = q.trim();
