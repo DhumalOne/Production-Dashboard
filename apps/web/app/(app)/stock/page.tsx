@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import { DataList, Named } from "@/components/data-list";
 import { STOCK_TABS, SubNav } from "@/components/sub-nav";
 import { formatINR, formatQty } from "@/lib/format";
-import { belowMinimum, slowMoving, stockByCategory, stockByWarehouse, topStockItems, type BelowMin, type GroupValue, type SlowItem, type StockItem } from "@/lib/queries/stock";
+import { belowMinimum, slowMoving, stockByCategory, stockByWarehouse, topStockItems, type BelowMin, type SlowItem, type StockItem } from "@/lib/queries/stock";
+import { ShareBars } from "./share-bars";
 
 export const metadata = { title: "Inventory · Dhumal Dashboard" };
 
@@ -22,24 +23,6 @@ export default function InventoryPage() {
   );
 }
 
-function ShareBars({ rows }: { rows: GroupValue[] }) {
-  return (
-    <ul className="mt-3 space-y-2 rounded-xl border border-border bg-surface p-4">
-      {rows.map((r) => (
-        <li key={r.key}>
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="min-w-0 truncate">{r.name}</span>
-            <span className="num shrink-0 font-medium">{formatINR(r.value)} <span className="text-muted">{(r.share * 100).toFixed(1)}%</span></span>
-          </div>
-          <div className="mt-1 h-2 rounded-full bg-surface-2">
-            <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.max(r.share * 100, 0.5)}%` }} />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 async function Categories() {
   const { rows, total } = await stockByCategory();
   return (
@@ -50,7 +33,7 @@ async function Categories() {
         <p className="text-[13px] text-muted">At each warehouse&rsquo;s average cost.</p>
       </div>
       <h2 id="cat" className="mt-6 text-base font-semibold">By item category</h2>
-      <ShareBars rows={rows} />
+      <ShareBars rows={rows} href={(r) => `/stock/items?${new URLSearchParams({ category: r.key })}`} />
     </section>
   );
 }
@@ -60,7 +43,7 @@ async function Warehouses() {
   return (
     <section className="mt-6" aria-labelledby="whs">
       <h2 id="whs" className="text-base font-semibold">Top warehouses</h2>
-      <ShareBars rows={rows} />
+      <ShareBars rows={rows} href={(r) => `/stock/items?${new URLSearchParams({ warehouse: r.key })}`} />
     </section>
   );
 }
