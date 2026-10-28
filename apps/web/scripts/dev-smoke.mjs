@@ -55,12 +55,16 @@ const pages = [
   ["/money/receivables", ["Total receivable", "Over 90 days", "estimated"]],
   ["/money/receivables?view=salesperson", ["By salesperson"]],
   ["/settings", ["Sign out of all devices", email]],
-  ["/money/receivables/C004153", ["VIP Industries", "Open"]],
+  ["/customers/C004153", ["VIP Industries", "Open"]],
   ["/money/payables", ["Total payable", "Over 90 days", "Vendor"]],
   ["/money/cash", ["Total liquidity", "Receipts", "On account"]],
   ["/money/cash?dir=out&p=ytd", ["Payments", "GL accounts"]],
   ["/stock", ["Stock value", "By item category", "Top 50 items", "minimum stock", "Slow and non-moving", "/stock/items?category=", "/stock/items?warehouse="]],
-  ["/stock/items?category=110", ["SPARES", "By warehouse", "Items by value", "Total"]],
+  ["/", ["Today’s briefing", "Written by AI from these figures"]],
+  ["/stock", ["Running out within 15 days","Uses per day", "On order"]],
+  ["/customers/C000207", ["Owes us", "Pays in", "Pending orders", "What they buy", "Open invoices", "Recent receipts", "Sale, last 12 months"]],
+  ["/money/receivables?q=C000207", ["/customers/C000207"]],
+  ["/stock/items?category=110",["SPARES", "By warehouse", "Items by value", "Total"]],
   ["/stock/items?warehouse=AS-FGS", ["Warehouse", "By item category", "Items by value"]],
   ["/stock/orders", ["Today’s orders", "Today’s dispatch"]],
   ["/stock/orders?view=pending", ["Open sales orders", "Over 180 days", "Balance"]],
@@ -102,6 +106,9 @@ for (const [path, needles] of pages) {
 // The old "More" address no longer exists.
 const gone = await fetch(BASE + "/more", { headers: { cookie }, redirect: "manual" });
 check("old /more route removed", gone.status === 404, `HTTP ${gone.status}`);
+const moved = await fetch(BASE + "/money/receivables/C004153", { headers: { cookie }, redirect: "manual" });
+check("old receivable page goes to the customer card", moved.status === 307 && moved.headers.get("location")?.endsWith("/customers/C004153"),
+      `HTTP ${moved.status} ${moved.headers.get("location")}`);
 
 // 5. Sign out of all devices revokes the session.
 await anon.auth.setSession(data.session);

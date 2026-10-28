@@ -22,6 +22,10 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    // A customer's open invoices moved to the customer card.
+    return [{ source: "/money/receivables/:card", destination: "/customers/:card", permanent: false }];
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

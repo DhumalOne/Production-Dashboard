@@ -117,6 +117,13 @@ ENTITIES: list[Entity] = [
                               "LineTotal", "WarehouseCode", "BaseType", "BaseEntry", "BaseLine",
                               "TransactionType", "U_Shift", "U_PRDOPERATOR", "U_SETUPOPERATOR", "U_Supervisor")},
            page_size=200, crossjoin_child="DocumentLines"),
+    # Goods issues: material leaving stock, mostly issues for production (BaseType 202). With deliveries this is
+    # an item's usage, from which stock cover (days) is worked out.
+    Entity("GoodsIssues", "InventoryGenExits", "DocEntry", "updated",
+           ("DocEntry", "DocNum", "DocDate", "CreationDate", "UpdateDate"),
+           {"DocumentLines": ("LineNum", "ItemCode", "Quantity", "MeasureUnit", "LineTotal", "WarehouseCode",
+                              "BaseType", "BaseEntry")},
+           page_size=200, crossjoin_child="DocumentLines"),
     Entity("ProductionOrders", "ProductionOrders", "AbsoluteEntry", "recent",
            ("AbsoluteEntry", "DocumentNumber", "ItemNo", "ProductDescription", "ProductionOrderStatus",
             "ProductionOrderType", "PlannedQuantity", "CompletedQuantity", "RejectedQuantity", "PostingDate",

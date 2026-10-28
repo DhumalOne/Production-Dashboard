@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Change, KpiSkeleton, KpiTile } from "@/components/kpi";
 import { PeriodChips } from "@/components/period-chips";
 import { SyncStamp } from "@/components/sync-stamp";
+import { morningBriefing, syncState } from "@/lib/briefing";
 import { formatINR } from "@/lib/format";
 import { AsOfDate } from "@/components/as-of";
 import { parseAsOf, parsePeriodKey, resolvePeriod, todayIST, type PeriodKey } from "@/lib/period";
@@ -27,6 +28,10 @@ export default function HomePage({ searchParams }: PageProps<"/">) {
     <main className="mx-auto max-w-6xl px-4 pt-[max(1rem,env(safe-area-inset-top))]">
       <Suspense fallback={<div className="h-28" />}>
         <Header searchParams={searchParams} />
+      </Suspense>
+
+      <Suspense fallback={<div className="mt-4 h-28 animate-pulse rounded-xl bg-surface" />}>
+        <MorningBriefing searchParams={searchParams} />
       </Suspense>
 
       <section aria-labelledby="kpis" className="mt-4">
@@ -67,6 +72,27 @@ async function Header({ searchParams }: { searchParams: SP }) {
         <AsOfDate value={today} max={realToday} />
       </div>
     </header>
+  );
+}
+
+/** Three lines written from today's figures (lib/briefing.ts). Only for the real today, not a past as-of date. */
+async function MorningBriefing({ searchParams }: { searchParams: SP }) {
+  const { today, realToday } = await periodFrom(searchParams);
+  if (today !== realToday) return null;
+  const { lastSyncAt } = await getSyncStatus();
+  if (!lastSyncAt) return null;
+  const b = await morningBriefing(realToday, ...syncState(lastSyncAt));
+  return (
+    <section aria-labelledby="briefing" className="mt-4 rounded-xl border border-accent/30 bg-accent-soft p-4">
+      <h2 id="briefing" className="text-[12px] font-medium uppercase tracking-wide text-accent">Today&rsquo;s briefing</h2>
+      <ul className="mt-2 space-y-1.5 text-[15px] leading-snug">
+        {b.lines.map((l) => <li key={l}>{l}</li>)}
+      </ul>
+      <details className="mt-2 text-[13px] text-muted">
+        <summary className="cursor-pointer select-none">{b.byAi ? "Written by AI from these figures" : "Figures"}</summary>
+        <ul className="mt-1 list-disc space-y-0.5 pl-5">{b.facts.map((f) => <li key={f}>{f}</li>)}</ul>
+      </details>
+    </section>
   );
 }
 

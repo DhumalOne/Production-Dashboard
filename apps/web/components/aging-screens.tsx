@@ -71,7 +71,7 @@ export async function AgingList({ side, view, q, all }: { side: Side; view: "par
       <div className="mt-3">
         <DataList<AgingRow>
           rows={rows}
-          href={view === "party" ? (r) => `${w.base}/${encodeURIComponent(r.key)}` : undefined}
+          href={view === "party" ? (r) => `${side === "receivable" ? "/customers" : w.base}/${encodeURIComponent(r.key)}` : undefined}
           empty={q ? `No ${w.party.toLowerCase()} matches “${q}”.` : `No ${w.title.toLowerCase()}.`}
           totalLabel={cut ? `Total (all ${w.party.toLowerCase()}s)` : "Total"}
           showAll={cut ? { href: `${w.base}?all=1`, label: `Show all ${w.party.toLowerCase()}s (large page)` } : undefined}
@@ -98,14 +98,19 @@ const DOC_LABEL: Record<string, string> = {
   AR_INV: "Invoice", AP_INV: "A/P invoice", OLDER: "Older balance", ADVANCE: "Advance",
 };
 
-export async function OpenItems({ side, card }: { side: Side; card: string }) {
+/** Open invoices of one party; `heading={false}` when the page already names the party (customer card). */
+export async function OpenItems({ side, card, heading = true }: { side: Side; card: string; heading?: boolean }) {
   const { name, items } = await partyOpenItems(side, card);
   const total = items.reduce((s, i) => s + i.amount, 0);
   return (
     <>
-      <h1 className="text-xl font-semibold">{name}</h1>
-      <p className="num text-sm text-muted">{card} · balance {formatINR(total, { exact: true })}</p>
-      <div className="mt-4">
+      {heading && (
+        <>
+          <h1 className="text-xl font-semibold">{name}</h1>
+          <p className="num text-sm text-muted">{card} · balance {formatINR(total, { exact: true })}</p>
+        </>
+      )}
+      <div className={heading ? "mt-4" : "mt-3"}>
         <DataList<OpenItem> rows={items} empty="No open balance." columns={[
           { label: "Document", cell: (i) => (i.docNum ? `${DOC_LABEL[i.docType] ?? i.docType} ${i.docNum}` : DOC_LABEL[i.docType] ?? i.docType) },
           { label: "Due", cell: (i) => i.dueDate ?? "—" },

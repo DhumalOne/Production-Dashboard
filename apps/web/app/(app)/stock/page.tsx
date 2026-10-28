@@ -2,7 +2,10 @@ import { Suspense } from "react";
 import { DataList, Named } from "@/components/data-list";
 import { STOCK_TABS, SubNav } from "@/components/sub-nav";
 import { formatINR, formatQty } from "@/lib/format";
-import { belowMinimum, slowMoving, stockByCategory, stockByWarehouse, topStockItems, type BelowMin, type SlowItem, type StockItem } from "@/lib/queries/stock";
+import {
+  belowMinimum, runningOut, slowMoving, stockByCategory, stockByWarehouse, topStockItems,
+  type BelowMin, type CoverItem, type SlowItem, type StockItem,
+} from "@/lib/queries/stock";
 import { ShareBars } from "./share-bars";
 
 export const metadata = { title: "Inventory · Dhumal Dashboard" };
@@ -15,6 +18,7 @@ export default function InventoryPage() {
       <h1 className="text-xl font-semibold">Stock</h1>
       <SubNav items={STOCK_TABS} current="/stock" />
       <Suspense fallback={<Skeleton />}><Categories /></Suspense>
+      <Suspense fallback={<Skeleton />}><RunningOut /></Suspense>
       <Suspense fallback={<Skeleton />}><Warehouses /></Suspense>
       <Suspense fallback={<Skeleton h="h-96" />}><TopItems /></Suspense>
       <Suspense fallback={<Skeleton />}><BelowMinimum /></Suspense>
@@ -34,6 +38,30 @@ async function Categories() {
       </div>
       <h2 id="cat" className="mt-6 text-base font-semibold">By item category</h2>
       <ShareBars rows={rows} href={(r) => `/stock/items?${new URLSearchParams({ category: r.key })}`} />
+    </section>
+  );
+}
+
+async function RunningOut() {
+  const { rows, count } = await runningOut(15, 40);
+  const days = (d: number) => (d < 1 ? "<1 day" : `${Math.floor(d)} days`);
+  return (
+    <section className="mt-6" aria-labelledby="cover">
+      <h2 id="cover" className="text-base font-semibold">Running out within 15 days</h2>
+      <p className="text-sm text-muted">
+        {count} items at their usage rate of the last 90 days (issues to production plus deliveries).
+        {count > rows.length ? ` Top ${rows.length} by value used per day.` : ""}
+      </p>
+      <div className="mt-3">
+        <DataList<CoverItem> rows={rows} empty="Nothing runs out within 15 days." columns={[
+          { label: "Item", cell: (r) => <Named name={r.itemName} code={r.itemCode} /> },
+          { label: "Category", cell: (r) => r.category ?? "—", wide: true },
+          { label: "On hand", cell: (r) => formatQty(r.onHand, r.uom), align: "right" },
+          { label: "Uses per day", cell: (r) => formatQty(r.dailyUse, r.uom), align: "right", wide: true },
+          { label: "On order", cell: (r) => (r.ordered > 0 ? formatQty(r.ordered, r.uom) : <span className="text-bad">None</span>), align: "right" },
+          { label: "Lasts", cell: (r) => <span className={r.coverDays < 7 ? "text-bad" : ""}>{days(r.coverDays)}</span>, align: "right" },
+        ]} />
+      </div>
     </section>
   );
 }
@@ -102,7 +130,7 @@ async function Slow() {
         </div>
       </div>
       <p className="mt-2 text-[13px] text-muted">
-        Movement means a sale, delivery or purchase. Items used only in production may show here until production data is connected.
+        Movement means a sale, delivery, purchase, issue to production or receipt from production.
       </p>
       <div className="mt-3">
         <DataList<SlowItem> rows={rows} columns={[

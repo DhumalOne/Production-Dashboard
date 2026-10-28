@@ -105,6 +105,35 @@ export async function belowMinimum(limit = 200): Promise<BelowMin[]> {
     limit ${limit}`;
 }
 
+export interface CoverItem {
+  itemCode: string;
+  itemName: string;
+  category: string | null;
+  uom: string | null;
+  onHand: number;
+  dailyUse: number;
+  coverDays: number;
+  ordered: number;
+}
+
+/**
+ * Items that will run out within `days` at their usage rate of the last 90 days (goods issues + deliveries),
+ * most valuable usage first so the material that stops production or dispatch comes before odd spares.
+ */
+export async function runningOut(days = 15, limit = 40): Promise<{ rows: CoverItem[]; count: number }> {
+  const sql = dbWeb();
+  const where = sql`where company = ${COMPANY} and cover_days < ${days} and used_90d > 0`;
+  const [rows, [c]] = await Promise.all([
+    sql<CoverItem[]>`
+      select item_code as "itemCode", coalesce(item_name, item_code) as "itemName", item_group_name as category, uom,
+             on_hand as "onHand", daily_use as "dailyUse", cover_days as "coverDays", ordered
+      from rpt.v_stock_cover ${where}
+      order by daily_use * coalesce(avg_price, 0) desc limit ${limit}`,
+    sql<{ n: number }[]>`select count(*)::int as n from rpt.v_stock_cover ${where}`,
+  ]);
+  return { rows, count: c.n };
+}
+
 export interface SlowItem extends StockItem { lastMovement: string | null; days: number | null }
 
 /** Stock with no sale, delivery or purchase for 90+ days (or none on record since April 2025). */

@@ -1,7 +1,9 @@
+import re
 from datetime import date
+from urllib.parse import quote, urlencode
 
 from dhumal_sync.registry import BY_NAME, shape
-from dhumal_sync.sync import _with_last, entry_filter, fetch_lines, next_watermark, plan_query
+from dhumal_sync.sync import _with_last, entry_chunks, entry_filter, fetch_lines, next_watermark, plan_query
 
 TODAY = date(2026, 10, 26)
 
@@ -18,6 +20,28 @@ def test_entry_filter_uses_range_or_list():
     assert entry_filter("Invoices", [5, 6, 7, 9]) == "Invoices/DocEntry ge 5 and Invoices/DocEntry le 9"
     assert entry_filter("Invoices", [1, 50, 900]) == \
         "(Invoices/DocEntry eq 1 or Invoices/DocEntry eq 50 or Invoices/DocEntry eq 900)"
+
+
+def test_scattered_entries_fit_the_query_limit():
+    # 28 Oct 2026: a day of changed purchase invoices made a 50-entry OR list exceed the 2,048-character limit.
+    entity = BY_NAME["PurchaseInvoices"]
+    coll, lines = entity.path, f"{entity.path}/DocumentLines"
+    entries = list(range(1000, 21000, 100))  # 200 scattered DocEntries
+    filters = entry_chunks(coll, entries)
+    covered = [int(e) for f in filters for e in re.findall(r"eq (\d+)", f)]
+    assert covered == entries
+    for f in filters:
+        query = urlencode({
+            "$expand": f"{coll}($select=DocEntry),{lines}($select={','.join(entity.children['DocumentLines'])})",
+            "$filter": f"{coll}/DocEntry eq {lines}/DocEntry and {f}",
+            "$orderby": f"{coll}/DocEntry,{lines}/LineNum",
+            "$top": 500,
+        }, quote_via=quote)
+        assert len(query) < 2048
+
+
+def test_contiguous_entries_stay_one_range():
+    assert entry_chunks("Invoices", list(range(1, 501))) == ["Invoices/DocEntry ge 1 and Invoices/DocEntry le 500"]
 
 
 class FakeSL:

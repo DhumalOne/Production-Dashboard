@@ -89,7 +89,9 @@ async function Body({ searchParams }: { searchParams: SP }) {
         <DataList rows={data.rows} columns={columns}
                   totalLabel={cut ? "Total (all rows)" : "Total"}
                   showAll={cut ? { href: `/sales?${qs({ all: "1" })}` } : undefined}
-                  href={by === "group" ? undefined : (r) => `/sales/documents?${qs({ key: r.key, name: r.label })}`} />
+                  href={by === "group" ? undefined
+                    : by === "customer" ? (r) => `/customers/${encodeURIComponent(r.key)}`
+                    : (r) => `/sales/documents?${qs({ key: r.key, name: r.label })}`} />
       </div>
     </>
   );

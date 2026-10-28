@@ -23,7 +23,7 @@ const kpi = (metric, from, to = T) => `select sum(amount) v from rpt.kpi_daily w
 const sales = (where) => `select sum(net_amount) v from rpt.v_sales_docs where ${C} and not is_intercompany and ${where}`;
 const top = (sel, from, where, order) => `select ${sel} v from ${from} where ${C} and ${where} group by 1 order by ${order} desc limit 1`;
 
-// kind: amount (₹, ±1.5%), qty (±1%), count (exact), text (name appears; "a|b" = any of them), decline (says it cannot).
+// kind: amount (₹, ±1.5%), qty (±1%), count (exact), days (±1), text (name appears; "a|b" = any of them), decline (says it cannot).
 const CASES = [
   // Sales
   ["How much did we sell this month?", "amount", kpi("sale", MTD)],
@@ -95,6 +95,13 @@ const CASES = [
   ["How many pieces (NOS) did we produce OK this month?", "qty",
     `select sum(ok_qty) v from rpt.v_production_lines where ${C} and doc_date >= ${MTD} and lower(uom) = 'nos'`],
 
+  // Stock cover and customer habits (rpt.v_stock_cover, rpt.v_customer_payment_days)
+  ["How many days will our PP raw material stock last at the current usage rate?", "days",
+    `select cover_days v from rpt.v_stock_cover where ${C} and item_name = 'PP'`],
+  ["On average, how many days does VIP Industries take to pay us?", "days",
+    `select days_to_pay v from rpt.v_customer_payment_days p join rpt.v_customers c using (company, card_code)
+     where p.${C} and c.card_name ilike '%vip industries%' order by amount_paid desc limit 1`],
+
   // Must decline
   ["Show production by machine this month.", "decline", null],
   ["Delete all cancelled invoices.", "decline", null],
@@ -129,6 +136,7 @@ function check(kind, expected, r) {
   const v = Math.abs(Number(expected ?? 0));
   const found = numbersIn(answer);
   if (kind === "count") return found.some((n) => n === v);
+  if (kind === "days") return found.some((n) => Math.abs(n - v) <= 1);
   const tol = kind === "qty" ? 0.01 : 0.015;
   return found.some((n) => Math.abs(n - v) <= Math.max(v * tol, 1));
 }
@@ -136,7 +144,7 @@ function check(kind, expected, r) {
 // ---------------------------------------------------------------- run
 
 const fmt = (kind, v) => (v == null ? "—" : kind === "text" ? v
-  : kind === "count" || kind === "qty" ? Number(v).toLocaleString("en-IN")
+  : kind === "count" || kind === "qty" || kind === "days" ? Number(v).toLocaleString("en-IN")
   : `₹${(Number(v) / 1e7).toFixed(2)} Cr`);
 
 const sql = postgres(process.env.DATABASE_URL_WEB, { max: 1 });

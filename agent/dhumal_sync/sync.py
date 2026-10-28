@@ -7,6 +7,7 @@ import uuid
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from urllib.parse import quote
 
 from .checkpoint import Checkpoint
 from .registry import ENTITIES, Entity, shape
@@ -83,6 +84,22 @@ def entry_filter(prefix: str, entries: list[int]) -> str:
     return "(" + " or ".join(f"{prefix}/DocEntry eq {e}" for e in sorted(entries)) + ")"
 
 
+def entry_chunks(prefix: str, entries: list[int], max_len: int = 1000) -> list[str]:
+    """Filters covering the sorted DocEntries, each short enough, once URL-encoded, to stay inside the Service
+    Layer's 2,048-character query limit together with $expand and $orderby."""
+    chunks: list[list[int]] = []
+    current: list[int] = []
+    for e in entries:
+        if current and len(quote(entry_filter(prefix, [*current, e]))) > max_len:
+            chunks.append(current)
+            current = [e]
+        else:
+            current.append(e)
+    if current:
+        chunks.append(current)
+    return [entry_filter(prefix, c) for c in chunks]
+
+
 def fetch_lines(sl: ServiceLayer, entity: Entity, headers: list[dict]) -> None:
     """Attaches entity.crossjoin_child lines to each header, reading only the registered line fields."""
     child = entity.crossjoin_child
@@ -92,14 +109,10 @@ def fetch_lines(sl: ServiceLayer, entity: Entity, headers: list[dict]) -> None:
     if not by_entry:
         return
     coll, lines = entity.path, f"{entity.path}/{child}"
-    entries = sorted(by_entry)
-    contiguous = entries[-1] - entries[0] + 1 <= 2 * len(entries)
-    step = len(entries) if contiguous else 50  # one range query, or short OR-lists
-    for i in range(0, len(entries), step):
-        chunk = entries[i:i + step]
+    for chunk_filter in entry_chunks(coll, sorted(by_entry)):
         params = {
             "$expand": f"{coll}($select=DocEntry),{lines}($select={','.join(entity.children[child])})",
-            "$filter": f"{coll}/DocEntry eq {lines}/DocEntry and {entry_filter(coll, chunk)}",
+            "$filter": f"{coll}/DocEntry eq {lines}/DocEntry and {chunk_filter}",
             # A fixed order keeps paging stable; without it pages can repeat or skip lines.
             "$orderby": f"{coll}/DocEntry,{lines}/LineNum",
         }
