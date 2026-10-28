@@ -28,7 +28,7 @@ export interface KpiCard {
 }
 
 export async function getKpis(period: Period, today: string): Promise<KpiCard[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const mtd = resolvePeriod("mtd", today);
   const ytd = resolvePeriod("ytd", today);
   const py = previousYear(period);
@@ -82,7 +82,7 @@ export interface Position {
 }
 
 export async function getPosition(): Promise<Position> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [row] = await sql<Omit<Position, "liquidity">[]>`
     select
       (select coalesce(sum(stock_value), 0) from rpt.v_stock where company = ${COMPANY})                         as inventory,
@@ -103,7 +103,7 @@ export interface Alert {
 
 /** Top items for "Needs attention" (PRD §6). Thresholds are v1 defaults; Settings will make them editable. */
 export async function getAlerts(limit = 3): Promise<Alert[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [receivables, orders] = await Promise.all([
     sql<{ card_code: string; card_name: string; over_90: number }[]>`
       select card_code, card_name, over_90 from rpt.v_receivable_aging
@@ -139,7 +139,7 @@ export interface SyncStatus {
 }
 
 export async function getSyncStatus(): Promise<SyncStatus> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [row] = await sql<{ last_sync_at: Date | null; last_sync_ok: boolean | null }[]>`
     select last_sync_at, last_sync_ok from rpt.v_sync_status where company = ${COMPANY}`;
   return { lastSyncAt: row?.last_sync_at ?? null, ok: row?.last_sync_ok ?? null };

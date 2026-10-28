@@ -41,7 +41,7 @@ export interface DocLine {
 
 /** One sales document with its lines and, per line, the delivery and sales order it came from. */
 export async function salesDocument(type: DocType, entry: number): Promise<{ header: DocHeader; lines: DocLine[] } | null> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [[header], lines] = await Promise.all([
     sql<DocHeader[]>`
       select doc_type as "docType", doc_label as label, doc_entry as "docEntry", doc_num as "docNum",
@@ -66,7 +66,7 @@ export interface FollowOn { docType: DocType; docEntry: number; docNum: number; 
 /** What was made from this document: deliveries and invoices from an order, invoices from a delivery. */
 export async function followOnDocuments(type: DocType, entry: number): Promise<FollowOn[]> {
   if (type !== "ORDER" && type !== "DELIVERY" && type !== "QUOTE") return [];
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const next = { QUOTE: ["ORDER"], ORDER: ["DELIVERY", "AR_INV"], DELIVERY: ["AR_INV"] }[type];
   const link = type === "ORDER" ? sql`(base_doc_type = 'ORDER' and base_entry = ${entry}) or order_entry = ${entry}`
     : sql`base_doc_type = ${type} and base_entry = ${entry}`;

@@ -22,7 +22,7 @@ export interface ProductionLine {
 
 /** V9 "Daily Item wise Production": one row per production order × receipt × item for the day. */
 export async function productionOn(day: string): Promise<ProductionLine[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<ProductionLine[]>`
     select p.order_num as "orderNum", p.receipt_num as "receiptNum", p.item_code as "itemCode",
            coalesce(max(p.item_name), p.item_code) as "itemName", max(p.uom) as uom, max(p.shift) as shift,
@@ -51,7 +51,7 @@ export interface ProductSummary {
 
 /** V9 "Product wise Summary" over a period; planned qty = planned quantity of the production orders received against. */
 export async function productSummary(range: DateRange, limit = 200): Promise<ProductSummary[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<ProductSummary[]>`
     with p as (
       select * from rpt.v_production_lines
@@ -75,7 +75,7 @@ export async function productSummary(range: DateRange, limit = 200): Promise<Pro
 export interface ProductionTotals { okValue: number; rejectedValue: number; okQty: number; rejectedQty: number; receipts: number }
 
 export async function productionTotals(range: DateRange): Promise<ProductionTotals> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [t] = await sql<ProductionTotals[]>`
     select coalesce(sum(ok_value), 0) as "okValue", coalesce(sum(rejected_value), 0) as "rejectedValue",
            coalesce(sum(ok_qty), 0) as "okQty", coalesce(sum(rejected_qty), 0) as "rejectedQty",
@@ -87,7 +87,7 @@ export async function productionTotals(range: DateRange): Promise<ProductionTota
 
 /** PRD §4.9: items with the most rejection in a period (by rejected value). */
 export async function topRejections(range: DateRange, limit = 5): Promise<ProductSummary[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<ProductSummary[]>`
     select item_code as "itemCode", coalesce(max(item_name), item_code) as "itemName", max(uom) as uom, null as "plannedQty",
            sum(ok_qty) as "okQty", sum(rejected_qty) as "rejectedQty", sum(rejected_value) as "okValue",
@@ -100,7 +100,7 @@ export async function topRejections(range: DateRange, limit = 5): Promise<Produc
 
 /** How many recent production lines carry shift / operator: tells the screen whether those summaries can be shown. */
 export async function fieldCoverage(range: DateRange): Promise<{ lines: number; shift: number; operator: number }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [r] = await sql<{ lines: number; shift: number; operator: number }[]>`
     select count(*)::int as lines, count(shift)::int as shift, count(operator)::int as operator
     from rpt.v_production_lines where company = ${COMPANY} and doc_date between ${range.from} and ${range.to}`;

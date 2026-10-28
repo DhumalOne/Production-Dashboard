@@ -16,7 +16,7 @@ export interface PurchaseRow {
 }
 
 export async function purchaseBy(dim: PurchaseDimension, range: DateRange, py: DateRange, limit = 100) {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   // Vendors use document totals (as the headline figure and SAP's Purchase Analysis); buyer and item exist only on lines.
   const keyCol = { buyer: sql`coalesce(buyer_code::text, '-1')`, vendor: sql`card_code`, item: sql`item_code` }[dim];
   const label = { buyer: sql`coalesce(max(buyer), 'No buyer')`, vendor: sql`max(card_name)`, item: sql`max(item_name)` }[dim];
@@ -49,7 +49,7 @@ export interface MonthSeries { key: string; label: string; values: number[]; pri
 
 /** V9 Purchase Trend: buyers, top 5 vendors and top 10 items month by month (last 6 months). */
 export async function purchaseTrend(today: string): Promise<{ months: string[]; buyers: MonthSeries[]; vendors: MonthSeries[]; items: MonthSeries[] }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const months = lastMonths(today, 6);
   const from = months[0] + "-01";
   const rows = await sql<{ dim: string; key: string; label: string; month: string; amount: number; qty: number }[]>`
@@ -84,7 +84,7 @@ export async function purchaseTrend(today: string): Promise<{ months: string[]; 
 export interface OpenPO { docNum: number; docDate: string; dueDate: string | null; vendor: string; lines: number; openValue: number; overdue: boolean }
 
 export async function openPurchaseOrders(limit = 100): Promise<{ rows: OpenPO[]; total: number; overdueValue: number }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const rows = await sql<OpenPO[]>`
     select doc_num as "docNum", to_char(min(doc_date), 'YYYY-MM-DD') as "docDate", to_char(min(due_date), 'YYYY-MM-DD') as "dueDate",
            max(vendor_name) as vendor, count(*)::int as lines, sum(open_value) as "openValue",

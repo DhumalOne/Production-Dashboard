@@ -1,4 +1,5 @@
 import "server-only";
+import { connection } from "next/server";
 import postgres from "postgres";
 
 // Two connections with different database roles:
@@ -21,7 +22,19 @@ function connect(url: string | undefined, name: string): postgres.Sql {
   });
 }
 
-export function dbWeb(): postgres.Sql {
+export type Sql = postgres.Sql;
+
+/**
+ * Screen queries. Awaiting connection() marks the page as rendered per request: with cacheComponents a page that
+ * reads no request data would otherwise be prerendered at build time and show build-day figures for ever.
+ */
+export async function dbWeb(): Promise<postgres.Sql> {
+  await connection();
+  return dbWebPool();
+}
+
+/** The same pool without the per-request mark, for "use cache" functions (e.g. the morning briefing). */
+export function dbWebPool(): postgres.Sql {
   return (globalThis.__dbWeb ??= connect(process.env.DATABASE_URL_WEB, "DATABASE_URL_WEB"));
 }
 

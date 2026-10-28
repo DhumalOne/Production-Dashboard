@@ -5,6 +5,9 @@ deploy.env
 .env.*
 !.env.example
 
+# Production server backups (deploy/backup.sh)
+deploy/backups/
+
 # Python
 agent/.venv/
 __pycache__/

@@ -1,0 +1,21 @@
+# HTTPS front door. Caddy gets and renews the certificate for {$DOMAIN} by itself.
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# `route` keeps this order (Caddy would otherwise sort the directives itself).
+	route {
+		# The sign-in service's admin API is only for scripts on the server (they call auth:9999 directly).
+		@admin path /auth/v1/admin /auth/v1/admin/*
+		respond @admin 403
+
+		handle_path /auth/v1/* {
+			reverse_proxy auth:9999
+		}
+		reverse_proxy web:3000
+	}
+}

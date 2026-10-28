@@ -1,0 +1,137 @@
+# Production server for the Dhumal dashboard (one Linux VM, e.g. Oracle Cloud Always Free, Mumbai).
+#   db    Postgres (Supabase image: has the roles and auth schema the sign-in service expects)
+#   auth  Supabase sign-in service (Google + allow-listed accounts), served at /auth/v1
+#   web   the Next.js dashboard
+#   caddy HTTPS for ${DOMAIN} with an automatic certificate; the only container with open ports
+# Settings and secrets come from .env next to this file (made by make-env.mjs, never committed).
+
+name: dhumal
+
+services:
+  db:
+    image: public.ecr.aws/supabase/postgres:17.11.0.006
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_PORT: 5432
+      PGPORT: 5432
+      POSTGRES_DB: postgres
+      PGDATABASE: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: 3600
+    command: >
+      postgres -c config_file=/etc/postgresql/postgresql.conf
+               -c shared_buffers=2GB -c effective_cache_size=8GB -c work_mem=32MB
+               -c maintenance_work_mem=512MB -c log_min_messages=warning
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    shm_size: 1gb
+
+  auth:
+    image: public.ecr.aws/supabase/gotrue:v2.197.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: https://${DOMAIN}/auth/v1
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      GOTRUE_SITE_URL: https://${DOMAIN}
+      GOTRUE_URI_ALLOW_LIST: https://${DOMAIN}/**
+      # Nobody can create an account by signing in: accounts are made by deploy/create-users.sh.
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_SESSIONS_TIMEBOX: 2160h
+      GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED: "true"
+      GOTRUE_SECURITY_REFRESH_TOKEN_REUSE_INTERVAL: 10
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: "true"
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: https://${DOMAIN}/auth/v1/callback
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      # Emailed codes (backup sign-in) only when a mail server is configured.
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      GOTRUE_MAILER_OTP_EXP: 600
+      GOTRUE_MAILER_OTP_LENGTH: 6
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Your Dhumal Dashboard sign-in code
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:-}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_SENDER_EMAIL:-}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Dhumal Dashboard}
+      GOTRUE_SMTP_MAX_FREQUENCY: 60s
+      GOTRUE_RATE_LIMIT_OTP: 30
+      GOTRUE_RATE_LIMIT_VERIFY: 30
+      GOTRUE_RATE_LIMIT_TOKEN_REFRESH: 150
+
+  web:
+    build:
+      context: ../apps/web
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: https://${DOMAIN}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+        EMAIL_CODES: ${EMAIL_CODES:-off}
+    image: dhumal-web:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: https://${DOMAIN}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      DATABASE_URL_WEB: postgresql://dash_web_login:${DASH_WEB_PASSWORD}@db:5432/postgres
+      DATABASE_URL_INGEST: postgresql://dash_ingest_login:${DASH_INGEST_PASSWORD}@db:5432/postgres
+      DATABASE_URL_AI: postgresql://dash_ai_login:${DASH_AI_PASSWORD}@db:5432/postgres
+      INGEST_API_KEYS: ${INGEST_API_KEYS}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ALLOWED_EMAILS: ${ALLOWED_EMAILS}
+      SITE_URL: https://${DOMAIN}
+      GOOGLE_WORKSPACE_DOMAIN: ${GOOGLE_WORKSPACE_DOMAIN:-dhumal.com}
+      EMAIL_CODES: ${EMAIL_CODES:-off}
+      TZ: Asia/Kolkata
+
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    depends_on: [web, auth]
+    ports: # HTTP_PORT / HTTPS_PORT only for a local trial run; the server uses 80 and 443
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    networks:
+      default:
+        # The dashboard checks sessions at https://${DOMAIN}/auth/v1; inside Docker that name points straight
+        # at Caddy, so those calls never leave the server.
+        aliases: ["${DOMAIN}"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

@@ -1,7 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { cacheLife } from "next/cache";
-import { dbWeb } from "./db";
+import { dbWebPool } from "./db";
 import { formatINR, formatQty } from "./format";
 import { todayIST } from "./period";
 import { COMPANY } from "./queries/home";
@@ -18,7 +18,7 @@ export interface Briefing { lines: string[]; facts: string[]; byAi: boolean }
  * use the last day before it. `staleSince` (e.g. "27 Oct 11:53") is set when the sync is more than two hours old.
  */
 async function facts(day: string, syncedDay: string, staleSince: string | null): Promise<string[]> {
-  const sql = dbWeb();
+  const sql = dbWebPool();
   const upto = syncedDay < day ? syncedDay : day; // first day that may be incomplete
   const [[sale], [mtd], [money], [cash], low, [prod]] = await Promise.all([
     sql<{ last_day: string | null; last_amt: number | null; avg30: number | null; today: number }[]>`

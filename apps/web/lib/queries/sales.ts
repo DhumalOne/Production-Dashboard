@@ -17,7 +17,7 @@ export interface SalesRow {
 
 /** Sale for a period grouped by salesperson / customer / item / item group, with last year alongside. */
 export async function salesBy(dim: SalesDimension, range: DateRange, py: DateRange, limit = 50): Promise<{ rows: SalesRow[]; total: number; totalPY: number }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const keyCol = { salesperson: sql`coalesce(slp_code::text, '-1')`, customer: sql`card_code`, item: sql`item_code`, group: sql`coalesce(item_group::text, '-')` }[dim];
   const labelCol = { salesperson: sql`coalesce(max(salesperson), 'No salesperson')`, customer: sql`max(card_name)`, item: sql`max(item_name)`, group: sql`coalesce(max(item_group_name), 'No group')` }[dim];
   const qty = dim === "item" ? sql`sum(quantity) filter (where doc_date between ${range.from} and ${range.to})` : sql`null::numeric`;
@@ -69,7 +69,7 @@ export async function salesBy(dim: SalesDimension, range: DateRange, py: DateRan
 
 /** Monthly sale for the last 12 months, overall and for the top salespeople. */
 export async function salesTrend(today: string, top = 5): Promise<{ months: string[]; series: { label: string; values: number[] }[] }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [y, m] = today.split("-").map(Number);
   const months = Array.from({ length: 12 }, (_, i) => new Date(Date.UTC(y, m - 12 + i, 1)).toISOString().slice(0, 7));
   const rows = await sql<{ salesperson: string; month: string; amount: number }[]>`
@@ -92,7 +92,7 @@ export async function salesTrend(today: string, top = 5): Promise<{ months: stri
 
 /** V9 Sales Trend (left table): every salesperson's sale for each of the last 6 months. */
 export async function salespersonMonths(asOf: string): Promise<{ months: string[]; rows: { key: string; label: string; values: number[] }[]; totals: number[] }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [y, m] = asOf.split("-").map(Number);
   const months = Array.from({ length: 6 }, (_, i) => new Date(Date.UTC(y, m - 6 + i, 1)).toISOString().slice(0, 7));
   const rows = await sql<{ key: string; label: string; month: string; amount: number }[]>`
@@ -117,7 +117,7 @@ export interface ItemTrend { itemCode: string; itemName: string; total: number; 
 
 /** V9 Sales Trend: top items month by month with price after discount and total discount % (last 6 months). */
 export async function itemTrends(today: string, top = 50): Promise<{ months: string[]; items: ItemTrend[] }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [y, m] = today.split("-").map(Number);
   const months = Array.from({ length: 6 }, (_, i) => new Date(Date.UTC(y, m - 6 + i, 1)).toISOString().slice(0, 7));
   const rows = await sql<{ item_code: string; item_name: string; month: string; amount: number; qty: number; list: number | null }[]>`
@@ -158,7 +158,7 @@ export interface SalesDoc {
 
 /** Documents behind a number: every row taps through to the SAP document number (PRD §4.10). */
 export async function salesDocuments(range: DateRange, filter: { dim?: SalesDimension; key?: string }, limit = 200): Promise<SalesDoc[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const cond =
     filter.dim === "salesperson" && filter.key ? sql`and coalesce(slp_code::text, '-1') = ${filter.key}` :
     filter.dim === "customer" && filter.key ? sql`and card_code = ${filter.key}` :

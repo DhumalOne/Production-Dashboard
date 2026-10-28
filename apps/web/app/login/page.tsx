@@ -32,10 +32,13 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       </form>
       <p className="mt-2 text-center text-[13px] text-muted">Use your @dhumal.com account.</p>
 
-      <details className="mt-8 text-sm">
-        <summary className="flex h-11 cursor-pointer items-center text-muted">Other ways to sign in</summary>
-        <LoginForm />
-      </details>
+      {/* Emailed codes need a mail server; EMAIL_CODES=off (set at build time) shows Google only. */}
+      {process.env.EMAIL_CODES !== "off" && (
+        <details className="mt-8 text-sm">
+          <summary className="flex h-11 cursor-pointer items-center text-muted">Other ways to sign in</summary>
+          <LoginForm />
+        </details>
+      )}
     </main>
   );
 }

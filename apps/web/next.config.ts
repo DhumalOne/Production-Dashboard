@@ -26,6 +26,8 @@ const nextConfig: NextConfig = {
     // A customer's open invoices moved to the customer card.
     return [{ source: "/money/receivables/:card", destination: "/customers/:card", permanent: false }];
   },
+  // Self-contained server build for the Docker image (deploy/); does not affect `next dev`.
+  output: "standalone",
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

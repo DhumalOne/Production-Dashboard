@@ -28,7 +28,7 @@ export interface CustomerSummary {
 
 /** Everything on the top of the customer card: who they are, what they buy, what they owe, how they pay. */
 export async function customerSummary(code: string, fy: DateRange, fyPY: DateRange): Promise<CustomerSummary> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [[info], [s], [o], [p], [aging]] = await Promise.all([
     sql<CustomerInfo[]>`
       select card_code as code, coalesce(card_name, card_code) as name, city, phone, credit_limit as "creditLimit",
@@ -58,7 +58,7 @@ export async function customerSummary(code: string, fy: DateRange, fyPY: DateRan
 
 /** Sale per month for the last 12 months (oldest first). */
 export async function customerTrend(code: string, today: string): Promise<{ months: string[]; values: number[] }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const [y, m] = today.split("-").map(Number);
   const months = Array.from({ length: 12 }, (_, i) => new Date(Date.UTC(y, m - 12 + i, 1)).toISOString().slice(0, 7));
   const rows = await sql<{ month: string; amount: number }[]>`
@@ -73,7 +73,7 @@ export async function customerTrend(code: string, today: string): Promise<{ mont
 export interface BoughtItem { itemCode: string; itemName: string; uom: string | null; quantity: number; amount: number }
 
 export async function customerItems(code: string, range: DateRange, limit = 10): Promise<BoughtItem[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<BoughtItem[]>`
     select item_code as "itemCode", coalesce(max(item_name), item_code) as "itemName", max(uom) as uom,
            sum(quantity) as quantity, sum(net_amount) as amount
@@ -88,7 +88,7 @@ export interface PendingLine {
 }
 
 export async function customerPendingOrders(code: string, limit = 20): Promise<PendingLine[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<PendingLine[]>`
     select doc_entry as "docEntry", doc_num as "docNum", to_char(doc_date, 'YYYY-MM-DD') as "docDate", to_char(due_date, 'YYYY-MM-DD') as "dueDate",
            coalesce(item_name, item_code) as "itemName", uom, open_qty as "openQty", open_value as "openValue",
@@ -101,7 +101,7 @@ export async function customerPendingOrders(code: string, limit = 20): Promise<P
 export interface Receipt { docNum: number; docDate: string; amount: number }
 
 export async function customerReceipts(code: string, limit = 10): Promise<Receipt[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<Receipt[]>`
     select doc_num as "docNum", to_char(doc_date, 'YYYY-MM-DD') as "docDate", total as amount
     from rpt.v_payments

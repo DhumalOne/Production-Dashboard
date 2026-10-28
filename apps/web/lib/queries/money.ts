@@ -12,7 +12,7 @@ export interface Account {
 
 /** Balance per bank and cash GL account (V9 "Cash Position"). */
 export async function bankCashAccounts(): Promise<Account[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<Account[]>`
     select code, name, kind, balance from rpt.v_bank_cash
     where company = ${COMPANY} and balance <> 0
@@ -30,7 +30,7 @@ export interface PartyPayment {
 
 /** Receipts by customer (in) or payments by vendor (out) for a period, with on-account amounts (V9 Receipt/Payment MTD). */
 export async function paymentsByParty(direction: "in" | "out", range: DateRange, limit = 100): Promise<{ rows: PartyPayment[]; total: number; onAccount: number }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const rows = await sql<PartyPayment[]>`
     select card_code as key, max(card_name) as name, max(pay_type) as "payType",
            sum(total) as total, sum(on_account) as "onAccount", count(*)::int as count
@@ -48,7 +48,7 @@ export async function paymentsByParty(direction: "in" | "out", range: DateRange,
 
 /** Totals by payment type, so account transfers (rAccount) can be told apart from customer/vendor payments. */
 export async function paymentsByType(direction: "in" | "out", range: DateRange): Promise<{ payType: string; total: number }[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<{ payType: string; total: number }[]>`
     select pay_type as "payType", sum(total) as total
     from rpt.v_payments

@@ -1,11 +1,11 @@
 import "server-only";
-import { dbWeb } from "../db";
+import { dbWeb, type Sql } from "../db";
 import { COMPANY } from "./home";
 
 export interface GroupValue { key: string; name: string; value: number; items: number; share: number }
 
 export async function stockByCategory(): Promise<{ rows: GroupValue[]; total: number }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const rows = await sql<Omit<GroupValue, "share">[]>`
     select coalesce(group_code::text, '-') as key, coalesce(item_group_name, 'No group') as name,
            sum(stock_value) as value, count(*) filter (where on_hand <> 0)::int as items
@@ -16,7 +16,7 @@ export async function stockByCategory(): Promise<{ rows: GroupValue[]; total: nu
 }
 
 export async function stockByWarehouse(limit = 30): Promise<GroupValue[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const rows = await sql<Omit<GroupValue, "share">[]>`
     select warehouse as key, coalesce(max(warehouse_name), warehouse) as name,
            sum(stock_value) as value, count(*) filter (where on_hand <> 0)::int as items
@@ -37,7 +37,7 @@ export interface StockItem {
 }
 
 export async function topStockItems(limit = 50): Promise<StockItem[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<StockItem[]>`
     select item_code as "itemCode", coalesce(item_name, item_code) as "itemName", item_group_name as category, uom,
            on_hand as "onHand", avg_price as "avgPrice", stock_value as value
@@ -48,14 +48,14 @@ export async function topStockItems(limit = 50): Promise<StockItem[]> {
 /** A category ("-" = items with no group) or a warehouse, as linked from the Inventory share bars. */
 export type StockFilter = { category: string } | { warehouse: string };
 
-const filterSql = (sql: ReturnType<typeof dbWeb>, f: StockFilter) =>
+const filterSql = (sql: Sql, f: StockFilter) =>
   "category" in f
     ? f.category === "-" ? sql`and group_code is null` : sql`and group_code::text = ${f.category}`
     : sql`and warehouse = ${f.warehouse}`;
 
 /** Items in one category or warehouse, by value; also the split the other way (warehouses of a category, categories of a warehouse). */
 export async function stockDetail(f: StockFilter): Promise<{ title: string; items: StockItem[]; split: GroupValue[]; total: number }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const where = filterSql(sql, f);
   const splitKey = "category" in f
     ? sql`warehouse as key, coalesce(max(warehouse_name), warehouse) as name`
@@ -93,7 +93,7 @@ export interface BelowMin {
 
 /** Items at or below minimum stock; pendingQty set when sales orders are also waiting for the item. */
 export async function belowMinimum(limit = 200): Promise<BelowMin[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<BelowMin[]>`
     select s.item_code as "itemCode", coalesce(s.item_name, s.item_code) as "itemName", s.uom,
            s.on_hand as "onHand", s.min_level as "minLevel", s.min_level - s.on_hand as shortfall,
@@ -121,7 +121,7 @@ export interface CoverItem {
  * most valuable usage first so the material that stops production or dispatch comes before odd spares.
  */
 export async function runningOut(days = 15, limit = 40): Promise<{ rows: CoverItem[]; count: number }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const where = sql`where company = ${COMPANY} and cover_days < ${days} and used_90d > 0`;
   const [rows, [c]] = await Promise.all([
     sql<CoverItem[]>`
@@ -138,7 +138,7 @@ export interface SlowItem extends StockItem { lastMovement: string | null; days:
 
 /** Stock with no sale, delivery or purchase for 90+ days (or none on record since April 2025). */
 export async function slowMoving(minDays = 90, limit = 100): Promise<{ rows: SlowItem[]; value90: number; value180: number }> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const base = sql`
     from rpt.v_stock s
     left join rpt.v_item_movement m on m.company = s.company and m.item_code = s.item_code
@@ -180,7 +180,7 @@ export interface OrderLine {
 }
 
 export async function ordersOn(day: string): Promise<OrderLine[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<OrderLine[]>`
     select doc_num as "docNum", to_char(doc_date, 'YYYY-MM-DD') as "docDate", to_char(due_date, 'YYYY-MM-DD') as "dueDate",
            card_code as "cardCode", card_name as "cardName", item_code as "itemCode", item_name as "itemName", uom, quantity, price,
@@ -190,7 +190,7 @@ export async function ordersOn(day: string): Promise<OrderLine[]> {
 }
 
 export async function dispatchOn(day: string): Promise<OrderLine[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<OrderLine[]>`
     select doc_num as "docNum", to_char(doc_date, 'YYYY-MM-DD') as "docDate", null as "dueDate",
            card_code as "cardCode", card_name as "cardName", item_code as "itemCode", item_name as "itemName", uom, quantity, price,
@@ -202,7 +202,7 @@ export async function dispatchOn(day: string): Promise<OrderLine[]> {
 export interface PendingSummary { age: string; orders: number; value: number }
 
 export async function pendingByAge(): Promise<PendingSummary[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<PendingSummary[]>`
     select case when doc_date >= rpt.today() - 30 then '0–30 days'
                 when doc_date >= rpt.today() - 90 then '31–90 days'
@@ -215,7 +215,7 @@ export async function pendingByAge(): Promise<PendingSummary[]> {
 
 /** Pending order lines with stock beside each line (V9 Pending Order), newest first. */
 export async function pendingOrders(opts: { maxAgeDays?: number; overdueOnly?: boolean; limit?: number }): Promise<OrderLine[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   const age = opts.maxAgeDays ? sql`and o.doc_date >= rpt.today() - ${opts.maxAgeDays}::int` : sql``;
   const overdue = opts.overdueOnly ? sql`and o.due_date < rpt.today()` : sql``;
   return sql<OrderLine[]>`
@@ -243,7 +243,7 @@ export interface ItemShortage {
 
 /** V9 "Balance Quantity and Stock": open order quantity per item against stock on hand. */
 export async function shortages(limit = 100): Promise<ItemShortage[]> {
-  const sql = dbWeb();
+  const sql = await dbWeb();
   return sql<ItemShortage[]>`
     select item_code as "itemCode", coalesce(item_name, item_code) as "itemName", item_group_name as category,
            open_qty as "openQty", on_hand as "onHand", shortage, orders::int
