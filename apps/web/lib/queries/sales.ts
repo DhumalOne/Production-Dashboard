@@ -148,6 +148,7 @@ export async function itemTrends(today: string, top = 50): Promise<{ months: str
 
 export interface SalesDoc {
   docType: string;
+  docEntry: number;
   docNum: number;
   docDate: string;
   cardName: string;
@@ -165,7 +166,7 @@ export async function salesDocuments(range: DateRange, filter: { dim?: SalesDime
         select company, doc_type, doc_entry from rpt.v_sales_lines where company = ${COMPANY} and item_code = ${filter.key})` :
     sql``;
   return sql<SalesDoc[]>`
-    select doc_type as "docType", doc_num as "docNum", to_char(doc_date, 'YYYY-MM-DD') as "docDate",
+    select doc_type as "docType", doc_entry as "docEntry", doc_num as "docNum", to_char(doc_date, 'YYYY-MM-DD') as "docDate",
            card_name as "cardName", salesperson, net_amount as amount
     from rpt.v_sales_docs
     where company = ${COMPANY} and not is_intercompany and doc_date between ${range.from} and ${range.to} ${cond}

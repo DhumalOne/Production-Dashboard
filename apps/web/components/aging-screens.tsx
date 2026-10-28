@@ -111,7 +111,11 @@ export async function OpenItems({ side, card, heading = true }: { side: Side; ca
         </>
       )}
       <div className={heading ? "mt-4" : "mt-3"}>
-        <DataList<OpenItem> rows={items} empty="No open balance." columns={[
+        <DataList<OpenItem> rows={items} empty="No open balance."
+          href={side === "receivable" && items.some((i) => i.docType === "AR_INV" && i.docEntry)
+            ? (i) => (i.docType === "AR_INV" && i.docEntry ? `/documents/AR_INV/${i.docEntry}` : `/customers/${encodeURIComponent(card)}`)
+            : undefined}
+          columns={[
           { label: "Document", cell: (i) => (i.docNum ? `${DOC_LABEL[i.docType] ?? i.docType} ${i.docNum}` : DOC_LABEL[i.docType] ?? i.docType) },
           { label: "Due", cell: (i) => i.dueDate ?? "—" },
           { label: "Days", cell: (i) => (i.daysOverdue == null ? "—" : i.daysOverdue <= 0 ? "Not due" : String(i.daysOverdue)) },

@@ -83,14 +83,14 @@ export async function customerItems(code: string, range: DateRange, limit = 10):
 }
 
 export interface PendingLine {
-  docNum: number; docDate: string; dueDate: string | null; itemName: string; uom: string | null;
+  docEntry: number; docNum: number; docDate: string; dueDate: string | null; itemName: string; uom: string | null;
   openQty: number; openValue: number; overdue: boolean;
 }
 
 export async function customerPendingOrders(code: string, limit = 20): Promise<PendingLine[]> {
   const sql = dbWeb();
   return sql<PendingLine[]>`
-    select doc_num as "docNum", to_char(doc_date, 'YYYY-MM-DD') as "docDate", to_char(due_date, 'YYYY-MM-DD') as "dueDate",
+    select doc_entry as "docEntry", doc_num as "docNum", to_char(doc_date, 'YYYY-MM-DD') as "docDate", to_char(due_date, 'YYYY-MM-DD') as "dueDate",
            coalesce(item_name, item_code) as "itemName", uom, open_qty as "openQty", open_value as "openValue",
            coalesce(due_date < rpt.today(), false) as overdue
     from rpt.v_order_lines

@@ -35,7 +35,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/sales/document
       <h1 className="text-xl font-semibold">{one(sp.name) ?? "Documents"}</h1>
       <p className="text-sm text-muted">{period.label} · {docs.length}{docs.length === 200 ? "+" : ""} documents · SAP document numbers</p>
       <div className="mt-4">
-        <DataList<SalesDoc> rows={docs} columns={[
+        <DataList<SalesDoc> rows={docs} href={(d) => `/documents/${d.docType}/${d.docEntry}`} columns={[
           { label: "Document", cell: (d) => `${LABEL[d.docType] ?? d.docType} ${d.docNum}` },
           { label: "Date", cell: (d) => d.docDate },
           { label: "Customer", cell: (d) => d.cardName, wide: true },

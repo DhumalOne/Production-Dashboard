@@ -68,6 +68,7 @@ export async function receivablesBySalesperson(): Promise<AgingRow[]> {
 
 export interface OpenItem {
   docType: string;
+  docEntry: number | null;
   docNum: number | null;
   docDate: string | null;
   dueDate: string | null;
@@ -79,7 +80,7 @@ export interface OpenItem {
 export async function partyOpenItems(side: Side, cardCode: string): Promise<{ name: string; items: OpenItem[] }> {
   const sql = dbWeb();
   const items = await sql<(OpenItem & { card_name: string | null })[]>`
-    select doc_type as "docType", doc_num as "docNum", to_char(doc_date, 'YYYY-MM-DD') as "docDate",
+    select doc_type as "docType", doc_entry as "docEntry", doc_num as "docNum", to_char(doc_date, 'YYYY-MM-DD') as "docDate",
            to_char(due_date, 'YYYY-MM-DD') as "dueDate", days_overdue as "daysOverdue", bucket,
            open_amount as amount, card_name
     from rpt.v_open_items

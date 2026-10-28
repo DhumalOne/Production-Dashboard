@@ -61,6 +61,12 @@ const pages = [
   ["/money/cash?dir=out&p=ytd", ["Payments", "GL accounts"]],
   ["/stock", ["Stock value", "By item category", "Top 50 items", "minimum stock", "Slow and non-moving", "/stock/items?category=", "/stock/items?warehouse="]],
   ["/", ["Today’s briefing", "Written by AI from these figures"]],
+  // Document detail: invoice lines and the order / delivery behind them
+  ["/documents/AR_INV/21398", ["260200682", "VIREN INDUSTRIES", "Made from", "Sales order", "262737829", "Delivery", "262729651",
+                               "PRIMARY &amp; SECONDARY STRUCTURE", "was sold"]],
+  ["/documents/ORDER/28595", ["262737829", "Made from this sales order", "260200682", "262729651", "was ordered", "Still open"]],
+  ["/documents/DELIVERY/24396", ["262729651", "Made from this delivery", "260200682"]],
+  ["/sales/documents?by=customer&key=C000207&p=ytd", ["/documents/AR_INV/"]],
   // Period picker: day, week, custom range on every screen
   ["/sales?p=week&d=2026-10-21", ["Week 19 – 25 Oct 2026", "Back to today"]],
   ["/sales?p=custom&from=2026-10-01&to=2026-10-15", ["1 – 15 Oct 2026", "Back to today"]],

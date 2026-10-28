@@ -135,7 +135,7 @@ async function Pending({ params }: { params: Params }) {
     <section className="mt-6" aria-labelledby="pending">
       <h2 id="pending" className="text-base font-semibold">Pending orders</h2>
       <div className="mt-3">
-        <DataList<PendingLine> rows={rows} empty="No pending orders." columns={[
+        <DataList<PendingLine> rows={rows} empty="No pending orders." href={(r) => `/documents/ORDER/${r.docEntry}`} columns={[
           { label: "Item", cell: (r) => r.itemName },
           { label: "Order", cell: (r) => <span className="num">{r.docNum}</span>, wide: true },
           { label: "Due", cell: (r) => <span className={r.overdue ? "text-bad" : ""}>{r.dueDate ?? "—"}</span> },
