@@ -2,11 +2,10 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { DataList } from "@/components/data-list";
-import { PeriodChips } from "@/components/period-chips";
+import { PeriodPicker } from "@/components/period-picker";
 import { MONEY_TABS, SubNav } from "@/components/sub-nav";
 import { formatINR } from "@/lib/format";
-import { parseAsOf, parsePeriodKey, resolvePeriod, todayIST } from "@/lib/period";
-import { AsOfDate } from "@/components/as-of";
+import { readPeriod, todayIST } from "@/lib/period";
 import { bankCashAccounts, paymentsByParty, paymentsByType, type Account, type PartyPayment } from "@/lib/queries/money";
 
 export const metadata = { title: "Cash & bank · Dhumal Dashboard" };
@@ -59,31 +58,25 @@ async function Balances() {
 
 async function Flows({ searchParams }: { searchParams: PageProps<"/money/cash">["searchParams"] }) {
   const sp = await searchParams;
-  const key = parsePeriodKey(sp.p);
   const dir = sp.dir === "out" ? "out" : "in";
   await connection();
-  const today = todayIST();
-  const asOf = parseAsOf(sp.d, today);
-  const period = resolvePeriod(key, asOf);
+  const { key, asOf, today, period, params } = readPeriod(sp, todayIST());
   const all = sp.all === "1";
   const [data, types] = await Promise.all([paymentsByParty(dir, period, all ? 5000 : 100), paymentsByType(dir, period)]);
-  const keep = { dir, ...(asOf !== today ? { d: asOf } : {}) };
+  const keep = { dir, ...params };
   const cut = !all && data.rows.length === 100;
   const word = dir === "in" ? { title: "Receipts", party: "Received from" } : { title: "Payments", party: "Paid to" };
   return (
     <section className="mt-8" aria-label={word.title}>
       <div className="flex flex-wrap items-center gap-2">
         {(["in", "out"] as const).map((d) => (
-          <Link key={d} href={`/money/cash?${new URLSearchParams({ ...keep, dir: d, p: key })}`} scroll={false} aria-current={d === dir ? "true" : undefined}
+          <Link key={d} href={`/money/cash?${new URLSearchParams({ ...keep, dir: d })}`} scroll={false} aria-current={d === dir ? "true" : undefined}
                 className={`flex h-11 items-center rounded-lg px-4 text-sm ${d === dir ? "bg-accent-soft font-medium text-accent" : "bg-surface"}`}>
             {d === "in" ? "Receipts" : "Payments"}
           </Link>
         ))}
       </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <PeriodChips current={key} basePath="/money/cash" keep={keep} />
-        <AsOfDate value={asOf} max={today} />
-      </div>
+      <div className="mt-3"><PeriodPicker value={{ key, asOf }} today={today} range={period} /></div>
       <div className="mt-3 rounded-xl border border-border bg-surface p-4">
         <p className="text-sm text-muted">{word.title}, {period.label.toLowerCase()}</p>
         <p className="num text-3xl font-semibold">{formatINR(data.total)}</p>
@@ -99,7 +92,7 @@ async function Flows({ searchParams }: { searchParams: PageProps<"/money/cash">[
       <div className="mt-3">
         <DataList<PartyPayment> rows={data.rows}
           totalLabel={cut ? "Total (all)" : "Total"}
-          showAll={cut ? { href: `/money/cash?${new URLSearchParams({ ...keep, p: key, all: "1" })}` } : undefined}
+          showAll={cut ? { href: `/money/cash?${new URLSearchParams({ ...keep, all: "1" })}` } : undefined}
           columns={[
             { label: word.party, cell: (r) => r.name || r.key },
             { label: dir === "in" ? "Customer code" : "Vendor code", cell: (r) => <span className="num">{r.key}</span>, wide: true },

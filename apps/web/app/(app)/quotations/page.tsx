@@ -1,10 +1,9 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AsOfDate } from "@/components/as-of";
 import { DataList, Named } from "@/components/data-list";
-import { PeriodChips } from "@/components/period-chips";
+import { PeriodPicker } from "@/components/period-picker";
 import { formatINR, formatQty } from "@/lib/format";
-import { parseAsOf, parsePeriodKey, resolvePeriod, todayIST } from "@/lib/period";
+import { readPeriod, todayIST } from "@/lib/period";
 import { quotationCount, quotationsBy, type QuoteRow } from "@/lib/queries/quotations";
 
 export const metadata = { title: "Quotations · Dhumal Dashboard" };
@@ -22,11 +21,8 @@ export default function QuotationsPage({ searchParams }: PageProps<"/quotations"
 
 async function Body({ searchParams }: { searchParams: PageProps<"/quotations">["searchParams"] }) {
   const sp = await searchParams;
-  const key = parsePeriodKey(sp.p, "ytd");
   await connection();
-  const today = todayIST();
-  const asOf = parseAsOf(sp.d, today);
-  const period = resolvePeriod(key, asOf);
+  const { key, asOf, today, period } = readPeriod(sp, todayIST(), "ytd");
   const [bySp, byItem, byCustomer, n] = await Promise.all([
     quotationsBy("salesperson", period), quotationsBy("item", period), quotationsBy("customer", period), quotationCount(),
   ]);
@@ -38,10 +34,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/quotations">["
         about 2,500 quotation lines. If quotes are now made elsewhere (for example the DhumalOne quotation tool), this screen can read
         them from there once that is agreed.
       </p>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <PeriodChips current={key} basePath="/quotations" keep={asOf !== today ? { d: asOf } : {}} />
-        <AsOfDate value={asOf} max={today} />
-      </div>
+      <div className="mt-4"><PeriodPicker value={{ key, asOf }} today={today} range={period} /></div>
       <div className="mt-4 rounded-xl border border-border bg-surface p-4">
         <p className="text-sm text-muted">Quotation value, {period.label.toLowerCase()}</p>
         <p className="num text-3xl font-semibold">{formatINR(bySp.total)}</p>

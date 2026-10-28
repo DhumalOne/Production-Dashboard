@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AsOfDate } from "@/components/as-of";
 import { DataList, Named } from "@/components/data-list";
 import { Change } from "@/components/kpi";
-import { PeriodChips } from "@/components/period-chips";
+import { PeriodPicker } from "@/components/period-picker";
 import { SALES_TABS, SubNav } from "@/components/sub-nav";
 import { TrendChart } from "@/components/trend-chart";
 import { formatINR, formatQty } from "@/lib/format";
-import { parseAsOf, parsePeriodKey, previousYear, resolvePeriod, todayIST } from "@/lib/period";
+import { previousYear, readPeriod, todayIST } from "@/lib/period";
 import { salesBy, salesTrend, type SalesDimension, type SalesRow } from "@/lib/queries/sales";
 
 export const metadata = { title: "Sales · Dhumal Dashboard" };
@@ -26,11 +25,8 @@ type SP = Promise<Record<string, string | string[] | undefined>>;
 async function read(searchParams: SP) {
   const sp = await searchParams;
   const by = (DIMS.find((d) => d.key === sp.by)?.key ?? "salesperson") as SalesDimension;
-  const key = parsePeriodKey(sp.p);
   await connection();
-  const today = todayIST();
-  const asOf = parseAsOf(sp.d, today);
-  return { by, key, today, asOf, all: sp.all === "1", period: resolvePeriod(key, asOf) };
+  return { by, all: sp.all === "1", ...readPeriod(sp, todayIST()) };
 }
 
 export default function SalesPage({ searchParams }: PageProps<"/sales">) {
@@ -50,10 +46,10 @@ export default function SalesPage({ searchParams }: PageProps<"/sales">) {
 }
 
 async function Body({ searchParams }: { searchParams: SP }) {
-  const { by, key, today, asOf, all, period } = await read(searchParams);
+  const { by, key, today, asOf, all, period, params } = await read(searchParams);
   const data = await salesBy(by, period, previousYear(period), all ? 5000 : LIMIT);
-  const keep = { by, ...(asOf !== today ? { d: asOf } : {}) };
-  const qs = (extra: Record<string, string>) => new URLSearchParams({ ...keep, p: key, ...extra }).toString();
+  const keep = { by, ...params };
+  const qs = (extra: Record<string, string>) => new URLSearchParams({ ...keep, ...extra }).toString();
   const cut = !all && data.rows.length === LIMIT;
   const withCode = by === "customer" || by === "item";
   const columns = [
@@ -68,18 +64,15 @@ async function Body({ searchParams }: { searchParams: SP }) {
   ];
   return (
     <>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <PeriodChips current={key} basePath="/sales" keep={keep} />
-        <AsOfDate value={asOf} max={today} />
-      </div>
+      <div className="mt-4"><PeriodPicker value={{ key, asOf }} today={today} range={period} /></div>
       <div className="mt-4 rounded-xl border border-border bg-surface p-4">
-        <p className="text-sm text-muted">{period.label}{asOf !== today ? ` (as of ${asOf})` : ""}</p>
+        <p className="text-sm text-muted">{period.label}</p>
         <p className="num text-3xl font-semibold">{formatINR(data.total)}</p>
         <Change current={data.total} previous={data.totalPY} />
       </div>
       <nav aria-label="Group by" className="mt-4 flex gap-2 overflow-x-auto pb-1">
         {DIMS.map((d) => (
-          <Link key={d.key} href={`/sales?${new URLSearchParams({ ...keep, by: d.key, p: key })}`} scroll={false} aria-current={d.key === by ? "true" : undefined}
+          <Link key={d.key} href={`/sales?${new URLSearchParams({ ...keep, by: d.key })}`} scroll={false} aria-current={d.key === by ? "true" : undefined}
                 className={`flex h-11 shrink-0 items-center rounded-lg px-4 text-sm ${d.key === by ? "bg-accent-soft font-medium text-accent" : "bg-surface text-text"}`}>
             {d.label}
           </Link>

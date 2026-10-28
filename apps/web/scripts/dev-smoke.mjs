@@ -61,6 +61,14 @@ const pages = [
   ["/money/cash?dir=out&p=ytd", ["Payments", "GL accounts"]],
   ["/stock", ["Stock value", "By item category", "Top 50 items", "minimum stock", "Slow and non-moving", "/stock/items?category=", "/stock/items?warehouse="]],
   ["/", ["Today’s briefing", "Written by AI from these figures"]],
+  // Period picker: day, week, custom range on every screen
+  ["/sales?p=week&d=2026-10-21", ["Week 19 – 25 Oct 2026", "Back to today"]],
+  ["/sales?p=custom&from=2026-10-01&to=2026-10-15", ["1 – 15 Oct 2026", "Back to today"]],
+  ["/sales?p=today&d=2026-10-20", ["Tue 20 Oct 2026"]],
+  ["/?p=today&d=2026-10-20", ["Back to today", "Day"]],
+  ["/production?p=week&d=2026-10-21", ["Daily item-wise production", "21 Oct 2026", "Week 19 – 25 Oct 2026"]],
+  ["/money/cash?p=custom&from=2026-09-01&to=2026-09-30&dir=out", ["1 – 30 Sept 2026", "Payments"]],
+  ["/purchase?p=ytd&d=2026-09-30", ["FY 2026-27 to date to 30 Sept 2026"]],
   ["/stock", ["Running out within 15 days","Uses per day", "On order"]],
   ["/customers/C000207", ["Owes us", "Pays in", "Pending orders", "What they buy", "Open invoices", "Recent receipts", "Sale, last 12 months"]],
   ["/money/receivables?q=C000207", ["/customers/C000207"]],
@@ -89,8 +97,8 @@ const pages = [
   // Production
   ["/production?d=2026-10-25", ["Daily item-wise production", "Prod order", "Rej. %", "OK value", "Product-wise summary", "Top 5 rejection items", "Operator-wise summary", "Machine-wise summary"]],
   // As-of date
-  ["/?d=2026-09-30&p=mtd", ["As of", "Production 2026-09-30", "Balances are as of now"]],
-  ["/sales?d=2026-09-30", ["as of 2026-09-30"]],
+  ["/?d=2026-09-30&p=mtd", ["To 30 Sept 2026", "Production 2026-09-30", "Balances are as of now"]],
+  ["/sales?d=2026-09-30", ["Month to date to 30 Sept 2026"]],
 ];
 for (const [path, needles] of pages) {
   const t = Date.now();

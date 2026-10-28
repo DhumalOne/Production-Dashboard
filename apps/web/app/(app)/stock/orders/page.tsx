@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AsOfDate } from "@/components/as-of";
+import { PeriodPicker } from "@/components/period-picker";
 import { DataList, Named, type Column } from "@/components/data-list";
 import { STOCK_TABS, SubNav } from "@/components/sub-nav";
 import { formatINR, formatQty } from "@/lib/format";
@@ -85,7 +85,7 @@ async function Day({ day, today }: { day: string; today: string }) {
   ];
   return (
     <>
-      <div className="mt-3"><AsOfDate value={day} max={today} /></div>
+      <div className="mt-3"><PeriodPicker dateOnly value={{ key: "today", asOf: day }} today={today} range={{ from: day, to: day }} /></div>
       <section className="mt-4" aria-labelledby="to">
         <h2 id="to" className="text-base font-semibold">{`${label} orders`}</h2>
         <p className="num text-sm text-muted">{new Set(orders.map((o) => o.docNum)).size} orders · {formatINR(sum(orders, "value"))}</p>

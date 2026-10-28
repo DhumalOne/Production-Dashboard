@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { DataList } from "@/components/data-list";
 import { formatINR } from "@/lib/format";
-import { parseAsOf, parsePeriodKey, resolvePeriod, todayIST } from "@/lib/period";
+import { readPeriod, todayIST } from "@/lib/period";
 import { salesDocuments, type SalesDimension, type SalesDoc } from "@/lib/queries/sales";
 
 export const metadata = { title: "Sales documents · Dhumal Dashboard" };
@@ -25,15 +25,12 @@ async function Body({ searchParams }: { searchParams: PageProps<"/sales/document
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const by = one(sp.by) as SalesDimension | undefined;
   const key = one(sp.key);
-  const p = parsePeriodKey(sp.p);
   await connection();
-  const today = todayIST();
-  const asOf = parseAsOf(sp.d, today);
-  const period = resolvePeriod(p, asOf);
+  const { period, params } = readPeriod(sp, todayIST());
   const docs = await salesDocuments(period, { dim: by, key });
   return (
     <>
-      <Link href={`/sales?${new URLSearchParams({ by: by ?? "salesperson", p, ...(asOf !== today ? { d: asOf } : {}) })}`}
+      <Link href={`/sales?${new URLSearchParams({ by: by ?? "salesperson", ...params })}`}
             className="inline-flex h-11 items-center text-sm text-accent">‹ Sales</Link>
       <h1 className="text-xl font-semibold">{one(sp.name) ?? "Documents"}</h1>
       <p className="text-sm text-muted">{period.label} · {docs.length}{docs.length === 200 ? "+" : ""} documents · SAP document numbers</p>

@@ -2,12 +2,11 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Change, KpiSkeleton, KpiTile } from "@/components/kpi";
-import { PeriodChips } from "@/components/period-chips";
+import { PeriodPicker } from "@/components/period-picker";
 import { SyncStamp } from "@/components/sync-stamp";
 import { morningBriefing, syncState } from "@/lib/briefing";
 import { formatINR } from "@/lib/format";
-import { AsOfDate } from "@/components/as-of";
-import { parseAsOf, parsePeriodKey, resolvePeriod, todayIST, type PeriodKey } from "@/lib/period";
+import { readPeriod, resolvePeriod, todayIST } from "@/lib/period";
 import { getAlerts, getKpis, getPosition, getSyncStatus } from "@/lib/queries/home";
 import { productionTotals } from "@/lib/queries/production";
 
@@ -16,11 +15,9 @@ type SP = Promise<Record<string, string | string[] | undefined>>;
 /** `today` below is the as-of date (?d=, V9's "Date" cell); `realToday` is the actual date in India. */
 async function periodFrom(searchParams: SP) {
   const sp = await searchParams;
-  const key = parsePeriodKey(sp.p);
   await connection();
-  const realToday = todayIST();
-  const today = parseAsOf(sp.d, realToday);
-  return { key, today, realToday, period: resolvePeriod(key, today) };
+  const { key, asOf, today: realToday, period, params } = readPeriod(sp, todayIST());
+  return { key, today: asOf, realToday, period, params };
 }
 
 export default function HomePage({ searchParams }: PageProps<"/">) {
@@ -59,7 +56,7 @@ export default function HomePage({ searchParams }: PageProps<"/">) {
 }
 
 async function Header({ searchParams }: { searchParams: SP }) {
-  const { key, today, realToday } = await periodFrom(searchParams);
+  const { key, today, realToday, period } = await periodFrom(searchParams);
   const status = await getSyncStatus();
   return (
     <header className="flex flex-col gap-3">
@@ -67,10 +64,7 @@ async function Header({ searchParams }: { searchParams: SP }) {
         <h1 className="text-xl font-semibold">Dhumal Industries</h1>
         <SyncStamp status={status} now={new Date()} />
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PeriodChips current={key as PeriodKey} basePath="/" keep={today !== realToday ? { d: today } : {}} />
-        <AsOfDate value={today} max={realToday} />
-      </div>
+      <PeriodPicker value={{ key, asOf: today }} today={realToday} range={period} />
     </header>
   );
 }
@@ -97,11 +91,13 @@ async function MorningBriefing({ searchParams }: { searchParams: SP }) {
 }
 
 async function KpiGrid({ searchParams }: { searchParams: SP }) {
-  const { key, today, realToday, period } = await periodFrom(searchParams);
+  const { key, today, realToday, period, params } = await periodFrom(searchParams);
   const kpis = await getKpis(period, today);
-  const query = `?p=${key}${today !== realToday ? `&d=${today}` : ""}`;
+  const query = `?${new URLSearchParams(params)}`;
   const sale = kpis.find((k) => k.key === "sale")!;
-  const short = { today: "Today", mtd: "MTD", qtd: "QTD", ytd: "YTD", custom: "Period" }[key];
+  const short = {
+    today: today === realToday ? "Today" : "Day", week: "Week", mtd: "MTD", qtd: "QTD", ytd: "YTD", custom: period.label,
+  }[key];
   return (
     <>
       <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-surface p-3">

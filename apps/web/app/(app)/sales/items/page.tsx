@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AsOfDate } from "@/components/as-of";
+import { PeriodPicker } from "@/components/period-picker";
 import { MonthMatrix } from "@/components/month-matrix";
 import { SALES_TABS, SubNav } from "@/components/sub-nav";
 import { formatINR } from "@/lib/format";
@@ -48,7 +48,7 @@ export default function SalesTrendsPage({ searchParams }: PageProps<"/sales/item
 
 async function DatePicker({ searchParams }: { searchParams: SP }) {
   const { today, asOf } = await asOfFrom(searchParams);
-  return <div className="mt-3"><AsOfDate value={asOf} max={today} /></div>;
+  return <div className="mt-3"><PeriodPicker dateOnly value={{ key: "today", asOf }} today={today} range={{ from: asOf, to: asOf }} /></div>;
 }
 
 async function People({ searchParams }: { searchParams: SP }) {

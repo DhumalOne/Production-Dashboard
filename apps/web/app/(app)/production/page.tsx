@@ -1,23 +1,21 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AsOfDate } from "@/components/as-of";
 import { DataList, Named, type Column } from "@/components/data-list";
-import { PeriodChips } from "@/components/period-chips";
+import { PeriodPicker } from "@/components/period-picker";
 import { formatINR, formatQty } from "@/lib/format";
-import { parseAsOf, parsePeriodKey, resolvePeriod, todayIST } from "@/lib/period";
+import { formatDay, readPeriod, todayIST } from "@/lib/period";
 import { fieldCoverage, productionOn, productionTotals, productSummary, topRejections, type ProductionLine, type ProductSummary } from "@/lib/queries/production";
 
 export const metadata = { title: "Production · Dhumal Dashboard" };
 
 type SP = PageProps<"/production">["searchParams"];
 
+/** One picker for the page: the daily list shows the as-of day, the summary the whole period. */
 async function read(searchParams: SP) {
   const sp = await searchParams;
   await connection();
-  const today = todayIST();
-  const day = parseAsOf(sp.d, today);
-  const key = parsePeriodKey(sp.p);
-  return { today, day, key, period: resolvePeriod(key, day) };
+  const { key, asOf, today, period } = readPeriod(sp, todayIST());
+  return { today, day: asOf, key, period };
 }
 
 const pct = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
@@ -27,6 +25,9 @@ export default function ProductionPage({ searchParams }: PageProps<"/production"
     <main className="mx-auto max-w-6xl px-4 pt-[max(1rem,env(safe-area-inset-top))]">
       <h1 className="text-xl font-semibold">Production</h1>
       <p className="text-sm text-muted">Receipts from production in SAP. Value at production cost.</p>
+      <Suspense fallback={<div className="mt-4 h-11" />}>
+        <Picker searchParams={searchParams} />
+      </Suspense>
       <Suspense fallback={<div className="mt-4 h-96 animate-pulse rounded-xl bg-surface" />}>
         <Daily searchParams={searchParams} />
       </Suspense>
@@ -35,6 +36,11 @@ export default function ProductionPage({ searchParams }: PageProps<"/production"
       </Suspense>
     </main>
   );
+}
+
+async function Picker({ searchParams }: { searchParams: SP }) {
+  const { today, day, key, period } = await read(searchParams);
+  return <div className="mt-4"><PeriodPicker value={{ key, asOf: day }} today={today} range={period} /></div>;
 }
 
 async function Daily({ searchParams }: { searchParams: SP }) {
@@ -59,10 +65,9 @@ async function Daily({ searchParams }: { searchParams: SP }) {
   ];
   return (
     <section className="mt-4" aria-labelledby="daily">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="daily" className="text-base font-semibold">Daily item-wise production</h2>
-        <AsOfDate value={day} max={today} />
-      </div>
+      <h2 id="daily" className="text-base font-semibold">
+        Daily item-wise production, {day === today ? "today" : formatDay(day)}
+      </h2>
       <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
         {[
           ["OK production", formatINR(t.okValue)],
@@ -79,14 +84,14 @@ async function Daily({ searchParams }: { searchParams: SP }) {
 }
 
 async function Summary({ searchParams }: { searchParams: SP }) {
-  const { today, day, key, period } = await read(searchParams);
+  const { day, period } = await read(searchParams);
   const week = { from: shift(day, -6), to: day };
   const [rows, rejects, coverage] = await Promise.all([productSummary(period), topRejections(week), fieldCoverage(period)]);
   return (
     <>
       <section className="mt-8" aria-labelledby="prod">
         <h2 id="prod" className="text-base font-semibold">Product-wise summary</h2>
-        <div className="mt-2"><PeriodChips current={key} basePath="/production" keep={day !== today ? { d: day } : {}} /></div>
+        <p className="text-sm text-muted">{period.label}</p>
         <div className="mt-3">
           <DataList<ProductSummary> rows={rows} empty="No production in this period." columns={[
             { label: "Item", cell: (r) => <Named name={r.itemName} code={r.itemCode} /> },

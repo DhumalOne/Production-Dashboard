@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AsOfDate } from "@/components/as-of";
 import { DataList, Named } from "@/components/data-list";
 import { Change } from "@/components/kpi";
 import { MonthMatrix } from "@/components/month-matrix";
-import { PeriodChips } from "@/components/period-chips";
+import { PeriodPicker } from "@/components/period-picker";
 import { formatINR, formatQty } from "@/lib/format";
-import { parseAsOf, parsePeriodKey, previousYear, resolvePeriod, todayIST } from "@/lib/period";
+import { previousYear, readPeriod, todayIST } from "@/lib/period";
 import { openPurchaseOrders, purchaseBy, purchaseTrend, type OpenPO, type PurchaseDimension, type PurchaseRow } from "@/lib/queries/purchase";
 
 export const metadata = { title: "Purchase · Dhumal Dashboard" };
@@ -41,25 +40,19 @@ type SP = PageProps<"/purchase">["searchParams"];
 async function read(searchParams: SP) {
   const sp = await searchParams;
   await connection();
-  const today = todayIST();
-  return { sp, today, asOf: parseAsOf(sp.d, today) };
+  return { sp, ...readPeriod(sp, todayIST()) };
 }
 
 async function Body({ searchParams }: { searchParams: SP }) {
-  const { sp, today, asOf } = await read(searchParams);
+  const { sp, today, asOf, key, period, params } = await read(searchParams);
   const by = DIMS.find((d) => d.key === sp.by)?.key ?? "vendor";
-  const key = parsePeriodKey(sp.p);
-  const period = resolvePeriod(key, asOf);
   const all = sp.all === "1";
   const data = await purchaseBy(by, period, previousYear(period), all ? 5000 : 100);
-  const keep = { by, ...(asOf !== today ? { d: asOf } : {}) };
+  const keep = { by, ...params };
   const cut = !all && data.rows.length === 100;
   return (
     <>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <PeriodChips current={key} basePath="/purchase" keep={keep} />
-        <AsOfDate value={asOf} max={today} />
-      </div>
+      <div className="mt-4"><PeriodPicker value={{ key, asOf }} today={today} range={period} /></div>
       <div className="mt-4 rounded-xl border border-border bg-surface p-4">
         <p className="text-sm text-muted">{period.label}</p>
         <p className="num text-3xl font-semibold">{formatINR(data.total)}</p>
@@ -67,7 +60,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
       </div>
       <nav aria-label="Group by" className="mt-4 flex gap-2">
         {DIMS.map((d) => (
-          <Link key={d.key} href={`/purchase?${new URLSearchParams({ ...keep, by: d.key, p: key })}`} scroll={false} aria-current={d.key === by ? "true" : undefined}
+          <Link key={d.key} href={`/purchase?${new URLSearchParams({ ...keep, by: d.key })}`} scroll={false} aria-current={d.key === by ? "true" : undefined}
                 className={`flex h-11 items-center rounded-lg px-4 text-sm ${d.key === by ? "bg-accent-soft font-medium text-accent" : "bg-surface"}`}>
             {d.label}
           </Link>
@@ -76,7 +69,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
       <div className="mt-3">
         <DataList<PurchaseRow> rows={data.rows}
           totalLabel={cut ? "Total (all rows)" : "Total"}
-          showAll={cut ? { href: `/purchase?${new URLSearchParams({ ...keep, p: key, all: "1" })}` } : undefined}
+          showAll={cut ? { href: `/purchase?${new URLSearchParams({ ...keep, all: "1" })}` } : undefined}
           columns={[
             { label: DIMS.find((d) => d.key === by)!.label, cell: (r) => (by === "buyer" ? r.label : <Named name={r.label} code={r.key} />) },
             ...(by === "item" ? [
