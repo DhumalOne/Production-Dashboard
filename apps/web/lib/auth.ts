@@ -1,5 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { supabaseServer } from "./supabase/server";
 
 /** Addresses allowed to sign in (ALLOWED_EMAILS, comma-separated). Changing it locks out anyone removed. */
@@ -19,6 +20,8 @@ export function isAllowed(email: string | null | undefined): boolean {
  * optimistic redirect; this is the real check (valid session AND still on the allow list).
  */
 export async function requireUser(): Promise<{ email: string }> {
+  // Session checks are per request (the Supabase client reads the clock), never part of a prerender.
+  await connection();
   const supabase = await supabaseServer();
   const { data } = await supabase.auth.getUser();
   const email = data.user?.email;

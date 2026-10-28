@@ -21,8 +21,9 @@ if (data?.url) {
   check("asks which account to use", /[?&]prompt=select_account/.test(loc));
   check("Google returns to Supabase callback", /redirect_uri=[^&]*%2Fauth%2Fv1%2Fcallback/.test(loc));
   const clientId = decodeURIComponent(loc.match(/[?&]client_id=([^&]*)/)?.[1] ?? "");
-  check("Google client ID is configured", /\.apps\.googleusercontent\.com$/.test(clientId),
-        clientId ? `got "${clientId.slice(0, 45)}": set the Google client ID` : "empty: set the Google client ID");
+  const configured = /\.apps\.googleusercontent\.com$/.test(clientId);
+  check("Google client ID is configured", configured,
+        configured ? "" : clientId ? `got "${clientId.slice(0, 45)}": set the Google client ID` : "empty: set the Google client ID");
 }
 
 // 2. The app's callback refuses visits without a valid code.
