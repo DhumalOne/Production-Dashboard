@@ -17,15 +17,17 @@ export interface PurchaseRow {
 
 export async function purchaseBy(dim: PurchaseDimension, range: DateRange, py: DateRange, limit = 100) {
   const sql = dbWeb();
-  const keyCol = { buyer: sql`coalesce(buyer_code::text, '-1')`, vendor: sql`vendor_code`, item: sql`item_code` }[dim];
-  const label = { buyer: sql`coalesce(max(buyer), 'No buyer')`, vendor: sql`max(vendor_name)`, item: sql`max(item_name)` }[dim];
+  // Vendors use document totals (as the headline figure and SAP's Purchase Analysis); buyer and item exist only on lines.
+  const keyCol = { buyer: sql`coalesce(buyer_code::text, '-1')`, vendor: sql`card_code`, item: sql`item_code` }[dim];
+  const label = { buyer: sql`coalesce(max(buyer), 'No buyer')`, vendor: sql`max(card_name)`, item: sql`max(item_name)` }[dim];
+  const source = dim === "vendor" ? sql`rpt.v_purchase_docs` : sql`rpt.v_purchase_lines`;
   const inPeriod = sql`doc_date between ${range.from} and ${range.to}`;
   const rows = await sql<{ key: string; label: string; amount: number; amount_py: number; quantity: number | null }[]>`
     select ${keyCol} as key, ${label} as label,
            coalesce(sum(net_amount) filter (where ${inPeriod}), 0) as amount,
            coalesce(sum(net_amount) filter (where doc_date between ${py.from} and ${py.to}), 0) as amount_py,
            ${dim === "item" ? sql`sum(quantity) filter (where ${inPeriod})` : sql`null::numeric`} as quantity
-    from rpt.v_purchase_lines
+    from ${source}
     where company = ${COMPANY} and (${inPeriod} or doc_date between ${py.from} and ${py.to})
     group by 1 order by amount desc limit ${limit}`;
   const [t] = await sql<{ total: number; total_py: number }[]>`

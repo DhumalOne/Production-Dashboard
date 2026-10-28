@@ -21,16 +21,31 @@ export async function salesBy(dim: SalesDimension, range: DateRange, py: DateRan
   const keyCol = { salesperson: sql`coalesce(slp_code::text, '-1')`, customer: sql`card_code`, item: sql`item_code`, group: sql`coalesce(item_group::text, '-')` }[dim];
   const labelCol = { salesperson: sql`coalesce(max(salesperson), 'No salesperson')`, customer: sql`max(card_name)`, item: sql`max(item_name)`, group: sql`coalesce(max(item_group_name), 'No group')` }[dim];
   const qty = dim === "item" ? sql`sum(quantity) filter (where doc_date between ${range.from} and ${range.to})` : sql`null::numeric`;
+  const inPeriod = sql`doc_date between ${range.from} and ${range.to}`;
+  const inEither = sql`(${inPeriod} or doc_date between ${py.from} and ${py.to})`;
 
+  // Salesperson and customer come from the document header (document totals, as SAP's Sales Analysis and the
+  // headline figure); item and group only exist on lines. Margin is always summed from lines.
+  const header = dim === "salesperson" || dim === "customer";
   const rows = await sql<{ key: string; label: string; amount: number; amount_py: number; quantity: number | null; margin: number | null }[]>`
+    ${header ? sql`
+    with m as (
+      select doc_type, doc_entry, sum(gross_margin) as gm from rpt.v_sales_lines
+      where company = ${COMPANY} and not is_intercompany and ${inPeriod}
+      group by 1, 2)
     select ${keyCol} as key, ${labelCol} as label,
-           coalesce(sum(net_amount) filter (where doc_date between ${range.from} and ${range.to}), 0) as amount,
+           coalesce(sum(net_amount) filter (where ${inPeriod}), 0) as amount,
+           coalesce(sum(net_amount) filter (where doc_date between ${py.from} and ${py.to}), 0) as amount_py,
+           null::numeric as quantity, sum(m.gm) as margin
+    from rpt.v_sales_docs d
+    left join m on m.doc_type = d.doc_type and m.doc_entry = d.doc_entry` : sql`
+    select ${keyCol} as key, ${labelCol} as label,
+           coalesce(sum(net_amount) filter (where ${inPeriod}), 0) as amount,
            coalesce(sum(net_amount) filter (where doc_date between ${py.from} and ${py.to}), 0) as amount_py,
            ${qty} as quantity,
-           sum(gross_margin) filter (where doc_date between ${range.from} and ${range.to}) as margin
-    from rpt.v_sales_lines
-    where company = ${COMPANY} and not is_intercompany
-      and (doc_date between ${range.from} and ${range.to} or doc_date between ${py.from} and ${py.to})
+           sum(gross_margin) filter (where ${inPeriod}) as margin
+    from rpt.v_sales_lines`}
+    where company = ${COMPANY} and not is_intercompany and ${inEither}
     group by 1
     order by amount desc
     limit ${limit}`;

@@ -19,7 +19,8 @@ const FY = `make_date(extract(year from ${T} - interval '3 months')::int, 4, 1)`
 const LM = `(date_trunc('month', ${T}) - interval '1 month')::date`;
 const C = "company = 'DHUMAL_LIVE'";
 const kpi = (metric, from, to = T) => `select sum(amount) v from rpt.kpi_daily where ${C} and metric = '${metric}' and day between ${from} and ${to}`;
-const sales = (where) => `select sum(net_amount) v from rpt.v_sales_lines where ${C} and not is_intercompany and ${where}`;
+// Salesperson, customer and vendor figures use document totals (the header), as the dashboard and SAP's reports do.
+const sales = (where) => `select sum(net_amount) v from rpt.v_sales_docs where ${C} and not is_intercompany and ${where}`;
 const top = (sel, from, where, order) => `select ${sel} v from ${from} where ${C} and ${where} group by 1 order by ${order} desc limit 1`;
 
 // kind: amount (₹, ±1.5%), qty (±1%), count (exact), text (name appears; "a|b" = any of them), decline (says it cannot).
@@ -32,11 +33,11 @@ const CASES = [
   ["What was our sale in August 2026?", "amount", kpi("sale", "'2026-08-01'::date", "'2026-08-31'::date")],
   ["This month's sale compared with the same period last year: what was last year's figure?", "amount",
     kpi("sale", `(${MTD} - interval '1 year')::date`, `(${T} - interval '1 year')::date`)],
-  ["Who is the top salesperson this financial year?", "text", top("salesperson", "rpt.v_sales_lines", `not is_intercompany and doc_date >= ${FY}`, "sum(net_amount)")],
+  ["Who is the top salesperson this financial year?", "text", top("salesperson", "rpt.v_sales_docs", `not is_intercompany and doc_date >= ${FY}`, "sum(net_amount)")],
   ["Atul Chavan's sale this financial year.", "amount", sales(`salesperson ilike '%atul chavan%' and doc_date >= ${FY}`)],
   ["Gaurav Jadhav's sale this month.", "amount", sales(`salesperson ilike '%gaurav jadhav%' and doc_date >= ${MTD}`)],
   ["Bhagwan Shewale's sale last month.", "amount", sales(`salesperson ilike '%bhagwan shewale%' and doc_date between ${LM} and ${MTD} - 1`)],
-  ["Who is our biggest customer by sale this financial year?", "text", top("card_name", "rpt.v_sales_lines", `not is_intercompany and doc_date >= ${FY}`, "sum(net_amount)")],
+  ["Who is our biggest customer by sale this financial year?", "text", top("card_name", "rpt.v_sales_docs", `not is_intercompany and doc_date >= ${FY}`, "sum(net_amount)")],
   ["Which item sold the most by value this quarter?", "text", top("item_name", "rpt.v_sales_lines", `not is_intercompany and doc_date >= ${QTD}`, "sum(net_amount)")],
   ["Which item group sold the most this financial year?", "text", top("item_group_name", "rpt.v_sales_lines", `not is_intercompany and doc_date >= ${FY}`, "sum(net_amount)")],
   ["What is this month's sale including GST?", "amount",
@@ -62,7 +63,7 @@ const CASES = [
   ["How much did we purchase this month?", "amount", kpi("purchase", MTD)],
   ["Purchases this financial year?", "amount", kpi("purchase", FY)],
   ["How much have we bought from Haldia Petrochemicals this financial year?", "amount",
-    `select sum(net_amount) v from rpt.v_purchase_lines where ${C} and vendor_name ilike '%haldia%' and doc_date >= ${FY}`],
+    `select sum(net_amount) v from rpt.v_purchase_docs where ${C} and card_name ilike '%haldia%' and doc_date >= ${FY}`],
   ["Value of open purchase orders?", "amount", `select sum(open_value) v from rpt.v_po_lines where ${C} and is_pending`],
 
   // Money
@@ -91,7 +92,8 @@ const CASES = [
   ["What is the production value this month?", "amount", kpi("production", MTD)],
   ["Production value this financial year?", "amount", kpi("production", FY)],
   ["Which item had the most rejections this financial year?", "text", top("item_name", "rpt.v_production_lines", `doc_date >= ${FY}`, "sum(rejected_qty)")],
-  ["Total OK quantity produced this month?", "qty", `select sum(ok_qty) v from rpt.v_production_lines where ${C} and doc_date >= ${MTD}`],
+  ["How many pieces (NOS) did we produce OK this month?", "qty",
+    `select sum(ok_qty) v from rpt.v_production_lines where ${C} and doc_date >= ${MTD} and lower(uom) = 'nos'`],
 
   // Must decline
   ["Show production by machine this month.", "decline", null],
@@ -101,8 +103,10 @@ const CASES = [
 // ---------------------------------------------------------------- checking
 
 const MULT = { cr: 1e7, crore: 1e7, crores: 1e7, l: 1e5, lakh: 1e5, lakhs: 1e5, lac: 1e5, lacs: 1e5, k: 1e3 };
+const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 function numbersIn(text) {
   const out = [];
+  for (const m of text.matchAll(/\b[a-z]+\b/gi)) if (WORDS.includes(m[0].toLowerCase())) out.push(WORDS.indexOf(m[0].toLowerCase()));
   for (const m of text.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(cr|crores?|l|lakhs?|lacs?|k)?\b/gi)) {
     const n = Number(m[1].replace(/,/g, ""));
     out.push(n * (MULT[m[2]?.toLowerCase()] ?? 1));

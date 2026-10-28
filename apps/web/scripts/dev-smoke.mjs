@@ -68,6 +68,7 @@ const pages = [
   ["/stock/orders?view=shortage", ["Shortage", "On hand"]],
   ["/purchase", ["Purchase", "Open purchase orders", "Top 5 vendors", "price after discount"]],
   ["/purchase?by=item&p=ytd", ["Qty", "Price after discount"]],
+  ["/purchase?by=vendor&p=ytd", ["HALDIA PETROCHEMICALS", "Total"]],
   ["/sales/items", ["Trends", "% off"]],
   ["/quotations", ["Quotations", "DhumalOne", "By salesperson", "By item", "By customer"]],
   ["/quotations?p=custom", ["No quotations in this period"]],
