@@ -6,7 +6,7 @@ import { todayIST } from "../period";
 import { catalog } from "./catalog";
 import { dbAi, runReadOnly, SqlRejected, type QueryResult } from "./sql";
 
-const MODEL = "claude-opus-5-5";
+const MODEL = "claude-haiku-5-5";
 const COMPANY = "DHUMAL_LIVE";
 
 // Stable instructions: identical on every request so the prompt cache can reuse them.
@@ -96,9 +96,6 @@ export async function ask(question: string, history: AskTurn[], email: string): 
       max_tokens: 16000,
       max_iterations: 8,
       output_config: { effort: "medium" },
-      // Server-side refusal fallback: a declined request is re-run on Anthropic's recommended model.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
       system: [
         { type: "text", text: RULES },
         { type: "text", text: `Data catalogue (the only tables you may query):\n\n${await catalog()}`, cache_control: { type: "ephemeral" } },
