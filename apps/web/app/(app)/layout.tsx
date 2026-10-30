@@ -1,11 +1,17 @@
 import { Suspense } from "react";
 import { AskBox } from "@/components/ask-box";
 import { BottomNav, BottomNavView, SideNav, SideNavView } from "@/components/nav";
+import { aiEnabled } from "@/lib/ai/switch";
 import { requireUser } from "@/lib/auth";
 
 async function Guard({ children }: { children: React.ReactNode }) {
   await requireUser();
   return children;
+}
+
+/** Hidden when the AI is turned off in Settings. */
+async function Ask() {
+  return (await aiEnabled()) ? <AskBox /> : null;
 }
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
@@ -20,7 +26,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <Guard>{children}</Guard>
         </Suspense>
       </div>
-      <AskBox />
+      <Suspense>
+        <Ask />
+      </Suspense>
       <Suspense fallback={<BottomNavView pathname="" />}>
         <BottomNav />
       </Suspense>

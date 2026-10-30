@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Change, KpiSkeleton, KpiTile } from "@/components/kpi";
 import { PeriodPicker } from "@/components/period-picker";
 import { SyncStamp } from "@/components/sync-stamp";
+import { aiEnabled } from "@/lib/ai/switch";
 import { morningBriefing, syncState } from "@/lib/briefing";
 import { formatINR } from "@/lib/format";
 import { readPeriod, resolvePeriod, todayIST } from "@/lib/period";
@@ -75,7 +76,7 @@ async function MorningBriefing({ searchParams }: { searchParams: SP }) {
   if (today !== realToday) return null;
   const { lastSyncAt } = await getSyncStatus();
   if (!lastSyncAt) return null;
-  const b = await morningBriefing(realToday, ...syncState(lastSyncAt));
+  const b = await morningBriefing(realToday, ...syncState(lastSyncAt), await aiEnabled());
   return (
     <section aria-labelledby="briefing" className="mt-4 rounded-xl border border-accent/30 bg-accent-soft p-4">
       <h2 id="briefing" className="text-[12px] font-medium uppercase tracking-wide text-accent">Today&rsquo;s briefing</h2>

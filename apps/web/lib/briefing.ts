@@ -9,7 +9,7 @@ import { COMPANY } from "./queries/home";
 // Morning briefing on Home: the figures come from fixed queries below; Claude only turns them into three
 // plain sentences (no tools, no database access). Rewritten at most every two hours, and again each day.
 
-const MODEL = "claude-opus-5-5";
+const MODEL = "claude-haiku-5-5";
 
 export interface Briefing { lines: string[]; facts: string[]; byAi: boolean }
 
@@ -102,12 +102,15 @@ export function syncState(lastSyncAt: Date, now = new Date()): [syncedDay: strin
 
 let client: Anthropic | null = null;
 
-/** Cached per day; within a day re-made at most every two hours as new SAP data arrives. */
-export async function morningBriefing(day: string, syncedDay: string, staleSince: string | null): Promise<Briefing> {
+/**
+ * Cached per day; within a day re-made at most every two hours as new SAP data arrives.
+ * `useAi` is the Settings switch; being an argument, it keeps the on and off versions apart in the cache.
+ */
+export async function morningBriefing(day: string, syncedDay: string, staleSince: string | null, useAi: boolean): Promise<Briefing> {
   "use cache";
   cacheLife({ stale: 300, revalidate: 2 * 60 * 60, expire: 24 * 60 * 60 });
   const f = await facts(day, syncedDay, staleSince);
-  if (!process.env.ANTHROPIC_API_KEY) return { lines: f.slice(0, 3), facts: f, byAi: false };
+  if (!useAi || !process.env.ANTHROPIC_API_KEY) return { lines: f.slice(0, 3), facts: f, byAi: false };
   try {
     client ??= new Anthropic({ timeout: 30_000, maxRetries: 1 });
     const msg = await client.beta.messages.create({

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { ask } from "@/lib/ai/ask";
+import { aiEnabled } from "@/lib/ai/switch";
 import { isAllowed } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 
@@ -17,6 +18,7 @@ export async function POST(request: NextRequest) {
   const { data } = await supabase.auth.getUser();
   const email = data.user?.email;
   if (!email || !isAllowed(email)) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
+  if (!(await aiEnabled())) return NextResponse.json({ error: "AI is turned off in Settings." }, { status: 503 });
 
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Please type a question." }, { status: 400 });

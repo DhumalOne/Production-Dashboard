@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import { aiEnabled } from "@/lib/ai/switch";
 import { requireUser } from "@/lib/auth";
+import { AiSwitch } from "./ai-switch";
 import { SignOutButtons } from "./sign-out";
 
 export const metadata = { title: "Settings · Dhumal Dashboard" };
@@ -14,8 +16,18 @@ export default function SettingsPage() {
         </Suspense>
         <SignOutButtons />
       </section>
+      <section className="mt-4 rounded-xl border border-border bg-surface p-4" aria-label="AI">
+        <Suspense fallback={<p className="h-16" />}>
+          <Ai />
+        </Suspense>
+      </section>
     </main>
   );
+}
+
+async function Ai() {
+  await requireUser();
+  return <AiSwitch enabled={await aiEnabled()} />;
 }
 
 async function Account() {
