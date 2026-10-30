@@ -12,7 +12,7 @@ Each question is grouped by who can answer it. Accounts also has their own sign-
 | # | Question | Why it matters | Answer |
 |---|---|---|---|
 | Q-IT-1 | Can IT create a **read-only SQL Server login** on SAPSERVER for DHUMAL_LIVE (`db_datareader` only)? It is one script and is what V9 effectively used. | Gives aging that matches SAP's Customer/Vendor Aging report exactly, and the future cash-flow forecast (V9 "Cash Position"). Without it, aging buckets are estimated and the forecast cannot be built | |
-| Q-IT-2 | Which always-on office PC or VM will run the sync agent? | It needs the LAN, outbound internet, and to stay on during office hours | |
+| Q-IT-2 | Which always-on office PC or VM will run the sync agent? | It needs the LAN, outbound internet, and to stay on during office hours | 30 Oct 2026: IT assigned **192.168.1.20** (MYREPORT, the HRMS server), RDP as administrator |
 | Q-IT-3 | Restart the **SAP Business One Service Layer** service after office hours, so we can retest the read-only user `DASHREAD` | The agent uses `manager` for now; go-live needs a read-only SAP user | |
 | Q-IT-4 | Supabase and Vercel accounts under a company email (Mumbai region) | Needed to deploy the demo | |
 
