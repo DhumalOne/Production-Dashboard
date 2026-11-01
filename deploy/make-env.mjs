@@ -29,7 +29,7 @@ const iat = Math.floor(Date.now() / 1000);
 const exp = iat + 10 * 365 * 24 * 3600;
 
 const env = {
-  DOMAIN: current.DOMAIN || "prod.dhumal.com",
+  DOMAIN: current.DOMAIN || "dashboard.dhumal.com",
   POSTGRES_PASSWORD: current.POSTGRES_PASSWORD || secret(),
   JWT_SECRET,
   ANON_KEY: current.ANON_KEY || jwt({ role: "anon", iss: "supabase", iat, exp }, JWT_SECRET),

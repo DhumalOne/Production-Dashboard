@@ -1,0 +1,15 @@
+# Settings for a 1 GB server (Oracle VM.Standard.E2.1.Micro). Copy to the server as
+# dhumal/deploy/docker-compose.override.yml; Docker Compose reads it by itself. Not needed on a larger server.
+# The dashboard cannot be built in 1 GB: build it on the office PC and load the image (see README.md).
+
+services:
+  db:
+    command: >
+      postgres -c config_file=/etc/postgresql/postgresql.conf
+               -c shared_buffers=128MB -c effective_cache_size=512MB -c work_mem=8MB
+               -c maintenance_work_mem=64MB -c max_connections=40 -c jit=off -c log_min_messages=warning
+    shm_size: 256mb
+
+  web:
+    environment:
+      NODE_OPTIONS: --max-old-space-size=256
