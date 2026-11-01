@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatChange, formatINR } from "@/lib/format";
+import { moduleTone } from "@/lib/module-tone";
 import type { KpiCard } from "@/lib/queries/home";
 
 /** Change vs last year: arrow + sign + colour, so colour is never the only signal. */
@@ -22,7 +23,7 @@ export function Sparkline({ values, label }: { values: number[]; label: string }
   const span = max - min || 1;
   const pts = values.map((v, i) => `${(i / Math.max(values.length - 1, 1)) * w},${h - ((v - min) / span) * h}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-7 w-full text-accent" role="img" aria-label={label}>
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-7 w-full text-mark" role="img" aria-label={label}>
       <polyline points={pts} fill="none" stroke="currentColor" strokeWidth={2} vectorEffect="non-scaling-stroke"
                 strokeLinejoin="round" strokeLinecap="round" />
     </svg>
@@ -32,7 +33,7 @@ export function Sparkline({ values, label }: { values: number[]; label: string }
 export function KpiTile({ kpi, periodLabel, query }: { kpi: KpiCard; periodLabel: string; query: string }) {
   return (
     <Link href={`${kpi.href}${query}`}
-          className="block rounded-xl border border-border bg-surface p-3 transition-colors hover:border-accent/50 active:bg-surface-2">
+          className={`${moduleTone(kpi.href)} block rounded-xl border border-t-4 border-border border-t-mark bg-surface p-3 transition-colors hover:bg-accent-soft active:bg-accent-soft`}>
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-medium text-muted">{kpi.label}</h3>
         <span className="text-[12px] text-muted">{periodLabel}</span>

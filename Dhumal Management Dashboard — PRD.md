@@ -214,8 +214,8 @@ The phone is the primary screen; the laptop view is the same app with more colum
 
 ### Visual style
 
-- Clean, modern, flat; light and dark mode following the phone setting.
-- One accent colour; green and red only for good and bad change, always with an arrow or sign so colour is never the only signal.
+- Clean, modern, flat; light and dark mode following the phone setting, or chosen in Settings (per device).
+- One colour per module (Sales, Money, Stock, Purchase, Production), always beside an icon or label; green and red only for good and bad change, always with an arrow or sign so colour is never the only signal.
 - Large numbers, short labels, ₹ L / Cr formatting (e.g. ₹2.76 Cr).
 - Charts: line for trends, bars for rankings, no 3D or pie charts beyond 5 slices.
 - Skeleton loaders, never a blank screen.

@@ -19,8 +19,8 @@ export function TrendChart({ months, values, label }: { months: string[]; values
       </figcaption>
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 h-44 w-full" role="img" aria-label={`${label}: ${summary}`}>
         <line x1={P.l} x2={W - P.r} y1={H - P.b} y2={H - P.b} className="stroke-border" />
-        <polyline points={pts} fill="none" className="stroke-accent" strokeWidth={2.5} strokeLinejoin="round" />
-        {values.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={i === last ? 4 : 2.5} className="fill-accent" />)}
+        <polyline points={pts} fill="none" className="stroke-mark" strokeWidth={2.5} strokeLinejoin="round" />
+        {values.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={i === last ? 4 : 2.5} className="fill-mark" />)}
         {months.map((m, i) => (i % 2 === last % 2 ? (
           <text key={m} x={x(i)} y={H - 6} textAnchor="middle" className="fill-muted text-[11px]">
             {MONTH.format(new Date(m + "-01"))}

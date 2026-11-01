@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { moduleTone } from "@/lib/module-tone";
 
 // Every module is one tap away (no "More" menu). Icons are 24px line drawings.
 const MODULES = [
@@ -28,7 +29,7 @@ function activeHref(pathname: string): string {
 
 function Icon({ d }: { d: string }) {
   return (
-    <svg viewBox="0 0 24 24" className="size-6 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8}
+    <svg viewBox="0 0 24 24" className="size-6 shrink-0 text-mark" fill="none" stroke="currentColor" strokeWidth={1.8}
          strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={d} />
     </svg>
@@ -58,7 +59,7 @@ export function BottomNavView({ pathname }: { pathname: string }) {
           return (
             <li key={m.href} className="snap-start">
               <Link href={m.href} ref={on ? activeRef : undefined} aria-current={on ? "page" : undefined}
-                    className={`flex h-14 min-w-[76px] flex-col items-center justify-center gap-0.5 px-2 text-[12px] whitespace-nowrap ${on ? "text-accent" : "text-muted"}`}>
+                    className={`${moduleTone(m.href)} flex h-14 min-w-[76px] flex-col items-center justify-center gap-0.5 px-2 text-[12px] whitespace-nowrap ${on ? "bg-accent-soft font-medium text-accent" : "text-muted"}`}>
                 <Icon d={m.icon} />
                 {m.label}
               </Link>
@@ -88,7 +89,7 @@ export function SideNavView({ pathname }: { pathname: string }) {
               return (
                 <li key={m.href}>
                   <Link href={m.href} aria-current={on ? "page" : undefined}
-                        className={`flex h-11 items-center gap-3 rounded-lg px-3 text-sm ${on ? "bg-accent-soft font-medium text-accent" : "text-text hover:bg-surface-2"}`}>
+                        className={`${moduleTone(m.href)} flex h-11 items-center gap-3 rounded-lg px-3 text-sm ${on ? "bg-accent-soft font-medium text-accent" : "text-text hover:bg-surface-2"}`}>
                     <Icon d={m.icon} />
                     {m.label}
                   </Link>

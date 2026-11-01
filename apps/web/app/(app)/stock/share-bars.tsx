@@ -14,7 +14,7 @@ export function ShareBars({ rows, href }: { rows: GroupValue[]; href?: (r: Group
               <span className="num shrink-0 font-medium">{formatINR(r.value)} <span className="text-muted">{(r.share * 100).toFixed(1)}%</span></span>
             </div>
             <div className="mt-1 h-2 rounded-full bg-surface-2">
-              <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.max(r.share * 100, 0.5)}%` }} />
+              <div className="h-2 rounded-full bg-mark" style={{ width: `${Math.max(r.share * 100, 0.5)}%` }} />
             </div>
           </>
         );

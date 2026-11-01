@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AskBox } from "@/components/ask-box";
+import { ModuleTheme } from "@/components/module-theme";
 import { BottomNav, BottomNavView, SideNav, SideNavView } from "@/components/nav";
 import { aiEnabled } from "@/lib/ai/switch";
 import { requireUser } from "@/lib/auth";
@@ -23,7 +24,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       {/* Bottom space: phone = bottom bar (3.5rem) + Ask bar (4rem); desktop = Ask bar. */}
       <div className="min-w-0 flex-1 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-24">
         <Suspense>
-          <Guard>{children}</Guard>
+          <Guard><ModuleTheme>{children}</ModuleTheme></Guard>
         </Suspense>
       </div>
       <Suspense>

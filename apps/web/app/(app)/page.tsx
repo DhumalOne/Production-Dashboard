@@ -3,10 +3,12 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { Change, KpiSkeleton, KpiTile } from "@/components/kpi";
 import { PeriodPicker } from "@/components/period-picker";
+import { SyncButton } from "@/components/sync-button";
 import { SyncStamp } from "@/components/sync-stamp";
 import { aiEnabled } from "@/lib/ai/switch";
 import { morningBriefing, syncState } from "@/lib/briefing";
 import { formatINR } from "@/lib/format";
+import { moduleTone } from "@/lib/module-tone";
 import { readPeriod, resolvePeriod, todayIST } from "@/lib/period";
 import { getAlerts, getKpis, getPosition, getSyncStatus } from "@/lib/queries/home";
 import { productionTotals } from "@/lib/queries/production";
@@ -63,7 +65,10 @@ async function Header({ searchParams }: { searchParams: SP }) {
     <header className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Dhumal Industries</h1>
-        <SyncStamp status={status} now={new Date()} />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <SyncStamp status={status} now={new Date()} />
+          <SyncButton />
+        </div>
       </div>
       <PeriodPicker value={{ key, asOf: today }} today={realToday} range={period} />
     </header>
@@ -101,7 +106,7 @@ async function KpiGrid({ searchParams }: { searchParams: SP }) {
   }[key];
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-surface p-3">
+      <div className="m-sales grid grid-cols-2 gap-3 rounded-xl border border-border bg-accent-soft p-3">
         <div>
           <p className="text-sm text-muted">Sale MTD</p>
           <p className="num text-lg font-semibold">{formatINR(sale.mtd)}</p>
@@ -145,8 +150,8 @@ async function PositionStrip({ searchParams }: { searchParams: SP }) {
     <ul className="mt-2 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4 lg:grid-cols-7">
       {items.map((i) => (
         <li key={i.label} className="bg-surface">
-          <Link href={i.href} className="block p-3 hover:bg-surface-2">
-            <p className="text-[12px] text-muted">{i.label}</p>
+          <Link href={i.href} className={`${moduleTone(i.href)} block p-3 hover:bg-accent-soft`}>
+            <p className="flex items-center gap-1.5 text-[12px] text-muted"><span aria-hidden className="size-2 shrink-0 rounded-full bg-mark" />{i.label}</p>
             <p className={`num text-base font-semibold ${i.value < 0 ? "text-bad" : ""}`}>{formatINR(i.value)}</p>
           </Link>
         </li>

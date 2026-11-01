@@ -1,15 +1,23 @@
 @import "tailwindcss";
 
-/* Design tokens. One accent colour; green/red only for good/bad change, always with a sign or arrow. */
+/* The theme comes from data-theme on <html> (lib/theme.ts), not directly from the device setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Design tokens. Each module has its own colour (the m-* classes below, chosen by lib/module-tone.ts):
+ *   --mark    bars, lines, icons (checked with the dataviz palette validator, every pair, light and dark)
+ *   --accent  text and buttons in that colour (at least 4.5:1 contrast)
+ * Green/red/amber stay reserved for good/bad/warning, always with a sign or arrow.
+ */
 :root {
-  --bg: #f5f6f8;
+  --bg: #f3f5fb;
   --surface: #ffffff;
-  --surface-2: #eef0f3;
-  --border: #dfe2e7;
+  --surface-2: #eceff6;
+  --border: #dde1ea;
   --text: #15181c;
-  --muted: #5b6370;
-  --accent: #1f4fd1;
-  --accent-soft: #e6ecfb;
+  --muted: #4b5563;
+  --mark: #1b7fdc;
+  --accent: #1a5fc0;
   --good: #11784f;
   --bad: #b42a2a;
   --warn: #9a5b00;
@@ -17,22 +25,37 @@
   --bad-soft: #fbe7e7;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1114;
-    --surface: #181b20;
-    --surface-2: #20242a;
-    --border: #2c3138;
-    --text: #e8eaed;
-    --muted: #9aa2ad;
-    --accent: #7f9dff;
-    --accent-soft: #1d2640;
-    --good: #4cc38a;
-    --bad: #f07070;
-    --warn: #f0b04c;
-    --warn-soft: #33270f;
-    --bad-soft: #3a1c1c;
-  }
+:root[data-theme="dark"] {
+  --bg: #0f1218;
+  --surface: #181b20;
+  --surface-2: #20242a;
+  --border: #2c3138;
+  --text: #e8eaed;
+  --muted: #aab2bd;
+  --mark: #2a93e6;
+  --accent: #7fb0f5;
+  --good: #4cc38a;
+  --bad: #f07070;
+  --warn: #f0b04c;
+  --warn-soft: #33270f;
+  --bad-soft: #3a1c1c;
+}
+
+.m-sales { --mark: #1b7fdc; --accent: #1a5fc0; }
+.m-money { --mark: #00a595; --accent: #00776d; }
+.m-stock { --mark: #5a2fc2; --accent: #5a2fc2; }
+.m-buy   { --mark: #b82478; --accent: #b82478; }
+.m-make  { --mark: #e0620f; --accent: #b34a05; }
+
+[data-theme="dark"] .m-sales { --mark: #2a93e6; --accent: #7fb0f5; }
+[data-theme="dark"] .m-money { --mark: #10a998; --accent: #3fcfbf; }
+[data-theme="dark"] .m-stock { --mark: #7a52e6; --accent: #b3a0f7; }
+[data-theme="dark"] .m-buy   { --mark: #b83a86; --accent: #f58cbe; }
+[data-theme="dark"] .m-make  { --mark: #d4691c; --accent: #f5a161; }
+
+/* Worked out where the module colour is set, so the tint follows it. */
+:root, .m-sales, .m-money, .m-stock, .m-buy, .m-make {
+  --accent-soft: color-mix(in oklab, var(--mark) 13%, var(--surface));
 }
 
 @theme inline {
@@ -42,6 +65,7 @@
   --color-border: var(--border);
   --color-text: var(--text);
   --color-muted: var(--muted);
+  --color-mark: var(--mark);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-good: var(--good);
@@ -54,7 +78,7 @@
 }
 
 html {
-  color-scheme: light dark;
+  color-scheme: light;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -63,6 +87,11 @@ body {
   color: var(--text);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   font-size: 15px;
+}
+
+/* The page title carries the module's colour. */
+main h1 {
+  color: var(--accent);
 }
 
 .num {
