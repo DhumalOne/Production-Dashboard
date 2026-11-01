@@ -80,6 +80,7 @@ const pages = [
   ["/money/receivables?q=C000207", ["/customers/C000207"]],
   ["/stock/items?category=110",["SPARES", "By warehouse", "Items by value", "Total"]],
   ["/stock/items?warehouse=AS-FGS", ["Warehouse", "By item category", "Items by value"]],
+  ["/stock/items?category=110&warehouse=AS-FGS", ["SPARES", "in all warehouses", "All categories in", "Items by value"]],
   ["/stock/orders", ["Today’s orders", "Today’s dispatch"]],
   ["/stock/orders?view=pending", ["Open sales orders", "Over 180 days", "Balance"]],
   ["/stock/orders?view=pending&overdue=1&age=all", ["Overdue only"]],

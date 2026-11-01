@@ -45,19 +45,23 @@ export async function topStockItems(limit = 50): Promise<StockItem[]> {
     order by stock_value desc limit ${limit}`;
 }
 
-/** A category ("-" = items with no group) or a warehouse, as linked from the Inventory share bars. */
-export type StockFilter = { category: string } | { warehouse: string };
+/** A category ("-" = items with no group), a warehouse, or both, as linked from the Inventory share bars. */
+export type StockFilter = { category?: string; warehouse?: string };
 
-const filterSql = (sql: Sql, f: StockFilter) =>
-  "category" in f
-    ? f.category === "-" ? sql`and group_code is null` : sql`and group_code::text = ${f.category}`
-    : sql`and warehouse = ${f.warehouse}`;
+const filterSql = (sql: Sql, f: StockFilter) => sql`
+  ${f.category === undefined ? sql`` : f.category === "-" ? sql`and group_code is null` : sql`and group_code::text = ${f.category}`}
+  ${f.warehouse === undefined ? sql`` : sql`and warehouse = ${f.warehouse}`}`;
 
-/** Items in one category or warehouse, by value; also the split the other way (warehouses of a category, categories of a warehouse). */
-export async function stockDetail(f: StockFilter): Promise<{ title: string; items: StockItem[]; split: GroupValue[]; total: number }> {
+/**
+ * Items in the filter, by value; also the split the other way (warehouses of a category, categories of a warehouse).
+ * Choosing from that split keeps the first filter, so the two levels narrow down instead of swapping.
+ */
+export async function stockDetail(f: StockFilter): Promise<{
+  categoryName: string; warehouseName: string; items: StockItem[]; split: GroupValue[]; total: number;
+}> {
   const sql = await dbWeb();
   const where = filterSql(sql, f);
-  const splitKey = "category" in f
+  const splitKey = f.category !== undefined
     ? sql`warehouse as key, coalesce(max(warehouse_name), warehouse) as name`
     : sql`coalesce(group_code::text, '-') as key, coalesce(max(item_group_name), 'No group') as name`;
   const [items, split, [t]] = await Promise.all([
@@ -72,13 +76,18 @@ export async function stockDetail(f: StockFilter): Promise<{ title: string; item
       select ${splitKey}, sum(stock_value) as value, count(*) filter (where on_hand <> 0)::int as items
       from rpt.v_stock_by_warehouse where company = ${COMPANY} ${where}
       group by 1 order by value desc`,
-    sql<{ title: string | null }[]>`
-      select ${"category" in f ? sql`max(item_group_name)` : sql`max(warehouse_name)`} as title
+    sql<{ category: string | null; warehouse: string | null }[]>`
+      select max(item_group_name) as category, max(warehouse_name) as warehouse
       from rpt.v_stock_by_warehouse where company = ${COMPANY} ${where}`,
   ]);
   const total = split.reduce((s, r) => s + r.value, 0);
-  const fallback = "category" in f ? (f.category === "-" ? "No group" : f.category) : f.warehouse;
-  return { title: t?.title ?? fallback, items, total, split: split.map((r) => ({ ...r, share: total ? r.value / total : 0 })) };
+  return {
+    categoryName: t?.category ?? (f.category === "-" ? "No group" : f.category ?? ""),
+    warehouseName: t?.warehouse ?? f.warehouse ?? "",
+    items,
+    total,
+    split: split.map((r) => ({ ...r, share: total ? r.value / total : 0 })),
+  };
 }
 
 export interface BelowMin {
