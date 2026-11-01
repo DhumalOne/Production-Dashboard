@@ -7,7 +7,8 @@ import { supabaseServer } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const to = (path: string) => NextResponse.redirect(new URL(path, url.origin));
+  // SITE_URL in production: behind Caddy, request.url holds the container's own address (0.0.0.0:3000).
+  const to = (path: string) => NextResponse.redirect(new URL(path, process.env.SITE_URL || url.origin));
   if (!code) return to("/login?error=google");
 
   const supabase = await supabaseServer();
