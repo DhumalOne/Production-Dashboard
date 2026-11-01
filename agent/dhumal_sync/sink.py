@@ -9,6 +9,11 @@ Batch payload:
      "snapshot": null | {"id": <uuid>, "final": bool}, "records": [...]}
 For a snapshot, the cloud keeps only the records sent under the final snapshot id.
 At the end of each cycle: {"type": "cycle", ...summary}.
+
+Small status messages go through report(), which tries once and returns the cloud's answer:
+    {"type": "poll", "company": ...}  ->  {"requested": bool}     # someone pressed "Sync now"
+    {"type": "progress", "company": ..., "state": "start" | "running" | "done",
+     "percent": int, "entity": str, "ok": bool}
 """
 from __future__ import annotations
 
@@ -31,19 +36,27 @@ class SinkError(RuntimeError):
 class Sink(Protocol):
     def send(self, payload: dict) -> None: ...
     def heartbeat(self, payload: dict) -> None: ...
+    def report(self, payload: dict) -> dict: ...
     def close(self) -> None: ...
 
 
 class HttpSink:
     BACKOFF_SECONDS = (2, 5, 15, 30, 60)
 
-    def __init__(self, ingest_url: str, heartbeat_url: str, api_key: str):
+    def __init__(self, ingest_url: str, heartbeat_url: str, api_key: str, ca_file: str = ""):
         if not (ingest_url and api_key):
             raise SystemExit("cloud.ingest_url and cloud.api_key must be set in config.toml (or use --dry-run).")
         self.ingest_url = ingest_url
         self.heartbeat_url = heartbeat_url
-        self.http = httpx.Client(timeout=httpx.Timeout(120, connect=15),
+        self.http = httpx.Client(verify=ca_file or True, timeout=httpx.Timeout(120, connect=15),
                                  headers={"x-api-key": api_key, "User-Agent": "dhumal-sync"})
+
+    @staticmethod
+    def _check_from_cloud(r: httpx.Response) -> None:
+        """A firewall's login page also says 200, so a watermark must not move on the status alone."""
+        if "application/json" not in r.headers.get("content-type", ""):
+            raise SinkError(f"Something other than the cloud answered: HTTP {r.status_code}, "
+                            f"{r.headers.get('content-type')}, via {r.headers.get('via')}")
 
     def _post(self, url: str, payload: dict) -> None:
         body = gzip.compress(json.dumps(payload, separators=(",", ":"), default=str).encode())
@@ -58,6 +71,7 @@ class HttpSink:
                 log.warning("Cloud transport error: %r", e)
                 continue
             if r.status_code < 300:
+                self._check_from_cloud(r)
                 return
             if r.status_code < 500 and r.status_code != 429:
                 raise SinkError(f"Cloud rejected batch: HTTP {r.status_code} {r.text[:300]}")
@@ -69,6 +83,13 @@ class HttpSink:
     def heartbeat(self, payload: dict) -> None:
         if self.heartbeat_url:
             self._post(self.heartbeat_url, payload)
+
+    def report(self, payload: dict) -> dict:
+        r = self.http.post(self.ingest_url, json=payload, timeout=15)
+        if r.status_code >= 300:
+            raise SinkError(f"Cloud rejected {payload['type']}: HTTP {r.status_code} {r.text[:300]}")
+        self._check_from_cloud(r)
+        return r.json()
 
     def close(self) -> None:
         self.http.close()
@@ -87,6 +108,9 @@ class PgSink:
 
     def heartbeat(self, payload: dict) -> None:
         self.send(payload)
+
+    def report(self, payload: dict) -> dict:
+        return self.conn.execute("select raw.ingest(%s::jsonb)", (json.dumps(payload, default=str),)).fetchone()[0]
 
     def close(self) -> None:
         self.conn.close()
@@ -114,6 +138,9 @@ class FileSink:
 
     def heartbeat(self, payload: dict) -> None:
         pass
+
+    def report(self, payload: dict) -> dict:
+        return {}
 
     def close(self) -> None:
         pass

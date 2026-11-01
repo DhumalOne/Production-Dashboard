@@ -1,4 +1,4 @@
-"""Local SQLite state: per-entity watermarks and snapshot run times.
+"""Local SQLite state: per-entity watermarks, snapshot run times and how long each entity took.
 
 A watermark only moves forward after the cloud has accepted every batch of a run, so a
 power cut or network drop simply repeats the last run.
@@ -20,6 +20,9 @@ class Checkpoint:
                 PRIMARY KEY (company, entity));
             CREATE TABLE IF NOT EXISTS last_run (
                 company TEXT, entity TEXT, ran_at TEXT,
+                PRIMARY KEY (company, entity));
+            CREATE TABLE IF NOT EXISTS duration (
+                company TEXT, entity TEXT, seconds REAL,
                 PRIMARY KEY (company, entity));
         """)
 
@@ -43,6 +46,15 @@ class Checkpoint:
         self.db.execute("INSERT INTO last_run VALUES (?,?,?) ON CONFLICT(company, entity) "
                         "DO UPDATE SET ran_at=excluded.ran_at",
                         (company, entity, when.isoformat(timespec="seconds")))
+        self.db.commit()
+
+    def durations(self, company: str) -> dict[str, float]:
+        """Seconds each entity took last time, used to weight the progress percentage."""
+        return dict(self.db.execute("SELECT entity, seconds FROM duration WHERE company=?", (company,)).fetchall())
+
+    def set_duration(self, company: str, entity: str, seconds: float) -> None:
+        self.db.execute("INSERT INTO duration VALUES (?,?,?) ON CONFLICT(company, entity) "
+                        "DO UPDATE SET seconds=excluded.seconds", (company, entity, seconds))
         self.db.commit()
 
     def reset(self, company: str, entity: str | None = None) -> None:

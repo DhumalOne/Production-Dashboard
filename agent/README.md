@@ -26,7 +26,7 @@ icacls config.toml /inheritance:r /grant:r "$env:USERDOMAIN\$env:USERNAME:(F)" "
 | `.venv\Scripts\python -m dhumal_sync --once --full` | Re-read everything |
 | `.venv\Scripts\python -m dhumal_sync --only Invoices,Orders --once` | Selected entities only |
 | `.venv\Scripts\python -m dhumal_sync --reset` | Forget watermarks; the next run is a full load |
-| `.venv\Scripts\python -m dhumal_sync` | Run forever on the schedule (used by the service) |
+| `.venv\Scripts\python -m dhumal_sync` | Run forever on the schedule (used by the service). Also asks the cloud every `poll_seconds` whether someone pressed "Sync now" on Home, and reports each cycle's progress back; this is outbound HTTPS too |
 | `.venv\Scripts\python -m pytest tests -q` | Unit tests |
 
 **Schedule:**

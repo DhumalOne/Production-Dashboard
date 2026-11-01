@@ -14,6 +14,9 @@ page_delay_ms = 200                    # pause between pages to keep SAP load lo
 ingest_url = "https://<app>.vercel.app/api/ingest"
 heartbeat_url = "https://<app>.vercel.app/api/heartbeat"
 api_key = ""
+# Leave out unless the office firewall inspects this machine's HTTPS and IT cannot exempt the dashboard.
+# Then the agent trusts only this CA, and that firewall can read the API key and everything sent.
+# ca_file = 'C:\path\to\firewall-ca.crt'
 
 [schedule]
 interval_minutes = 15
@@ -21,4 +24,5 @@ office_start = "07:00"
 office_end = "21:00"
 full_refresh_at = "02:00"
 heartbeat_minutes = 5
+poll_seconds = 10                      # how often to ask whether someone pressed "Sync now"
 recent_days = 60

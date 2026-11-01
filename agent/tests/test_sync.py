@@ -3,9 +3,68 @@ from datetime import date
 from urllib.parse import quote, urlencode
 
 from dhumal_sync.registry import BY_NAME, shape
-from dhumal_sync.sync import _with_last, entry_chunks, entry_filter, fetch_lines, next_watermark, plan_query
+from dhumal_sync.checkpoint import Checkpoint
+from dhumal_sync.sync import (
+    Progress, _with_last, entry_chunks, entry_filter, fetch_lines, next_watermark, plan_query, run_cycle,
+)
 
 TODAY = date(2026, 10, 26)
+
+
+class FakeSink:
+    def __init__(self, fail_reports=False):
+        self.sent, self.reports, self.fail_reports = [], [], fail_reports
+
+    def send(self, payload):
+        self.sent.append(payload)
+
+    def report(self, payload):
+        if self.fail_reports:
+            raise OSError("cloud down")
+        self.reports.append(payload)
+        return {}
+
+
+class EmptySL:
+    def pages(self, path, params, page_size=None):
+        return iter([])
+
+
+def test_progress_is_weighted_by_last_duration_and_stops_below_100():
+    entities = [BY_NAME["Invoices"], BY_NAME["Orders"]]
+    p = Progress(FakeSink(), "C", entities, {"Invoices": 30.0, "Orders": 10.0})
+    assert p.percent == 0
+    p.finished("Invoices")
+    assert p.percent == 75
+    p.finished("Orders")
+    assert p.percent == 99  # 100 only comes with the "done" report, after the cycle summary was accepted
+
+
+def test_cycle_reports_start_entities_and_done_after_the_summary(tmp_path):
+    sink = FakeSink()
+    cp = Checkpoint(tmp_path / "s.db")
+    run_cycle(EmptySL(), sink, cp, "C", False, 60, only={"Invoices", "Orders"})
+    states = [r["state"] for r in sink.reports]
+    assert states[0] == "start" and states[-1] == "done"
+    assert [r["entity"] for r in sink.reports if r["state"] == "running"] == ["Invoices", "Orders"]
+    assert sink.reports[-1]["ok"] is True
+    assert sink.sent[-1]["type"] == "cycle"
+    assert set(cp.durations("C")) == {"Invoices", "Orders"}
+
+
+def test_sync_now_rereads_a_snapshot_that_is_not_due(tmp_path):
+    cp = Checkpoint(tmp_path / "s.db")
+    run_cycle(EmptySL(), FakeSink(), cp, "C", False, 60, only={"WarehouseStock"})
+    due = FakeSink()
+    assert run_cycle(EmptySL(), due, cp, "C", False, 60, only={"WarehouseStock"}).entities[0].skipped
+    assert not run_cycle(EmptySL(), due, cp, "C", False, 60, only={"WarehouseStock"}, fresh=True).entities[0].skipped
+
+
+def test_progress_failures_never_stop_the_sync(tmp_path):
+    sink = FakeSink(fail_reports=True)
+    result = run_cycle(EmptySL(), sink, Checkpoint(tmp_path / "s.db"), "C", False, 60, only={"Invoices"})
+    assert result.ok
+    assert sink.sent[-1]["type"] == "cycle"
 
 
 def test_first_run_reads_everything():

@@ -23,7 +23,7 @@ from .config import STATE_DIR, Config
 from .registry import BY_NAME
 from .sink import FileSink, HttpSink, PgSink, Sink
 from .sl import ServiceLayer
-from .sync import run_cycle
+from .sync import report_progress, run_cycle
 
 VERSION = "0.1.0"
 log = logging.getLogger("dhumal_sync")
@@ -52,12 +52,17 @@ def in_office_hours(cfg: Config, now: datetime) -> bool:
     return start <= (now.hour, now.minute) < end
 
 
-def cycle(cfg: Config, sink: Sink, cp: Checkpoint, full: bool, only: set[str] | None) -> bool:
+def cycle(cfg: Config, sink: Sink, cp: Checkpoint, full: bool, only: set[str] | None,
+          companies: list[str] | None = None, fresh: bool = False) -> bool:
     ok = True
-    for company in cfg.sap.companies:
+    for company in companies or cfg.sap.companies:
         log.info("%s cycle for %s", "Full" if full else "Incremental", company)
-        with ServiceLayer(cfg.sap, company) as sl:
-            result = run_cycle(sl, sink, cp, company, full, cfg.schedule.recent_days, only)
+        try:
+            with ServiceLayer(cfg.sap, company) as sl:
+                result = run_cycle(sl, sink, cp, company, full, cfg.schedule.recent_days, only, fresh)
+        except Exception:  # e.g. SAP login failed: the dashboard must not keep showing this cycle as running
+            report_progress(sink, company, "done", ok=False)
+            raise
         secs = (result.finished_at - result.started_at).total_seconds()
         log.info("Cycle for %s %s in %.0fs", company, "OK" if result.ok else "WITH ERRORS", secs)
         ok &= result.ok
@@ -71,6 +76,15 @@ def heartbeat_loop(cfg: Config, sink: Sink, state: dict, stop: threading.Event) 
                             "at": datetime.now().isoformat(timespec="seconds"), **state})
         except Exception as e:
             log.warning("Heartbeat failed: %s", e)
+
+
+def requested_companies(cfg: Config, sink: Sink) -> list[str]:
+    """Companies where someone pressed "Sync now". A failed poll just means asking again next time."""
+    try:
+        return [c for c in cfg.sap.companies if sink.report({"type": "poll", "company": c}).get("requested")]
+    except Exception as e:
+        log.warning("Poll failed: %s", e)
+        return []
 
 
 def run_forever(cfg: Config, sink: Sink, cp: Checkpoint) -> None:
@@ -88,9 +102,15 @@ def run_forever(cfg: Config, sink: Sink, cp: Checkpoint) -> None:
             now = datetime.now()
             due_full = (now.hour, now.minute) >= (full_h, full_m) and last_full_day != now.date() \
                 and (now.hour, now.minute) < (full_h + 1, full_m)
-            if due_full or (in_office_hours(cfg, now) and now >= next_run):
+            requested = requested_companies(cfg, sink)
+            if requested or due_full or (in_office_hours(cfg, now) and now >= next_run):
                 try:
-                    ok = cycle(cfg, sink, cp, full=due_full, only=None)
+                    if requested:
+                        log.info("Sync requested from the dashboard")
+                        due_full = False  # the nightly full run comes on the next pass
+                        ok = cycle(cfg, sink, cp, full=False, only=None, companies=requested, fresh=True)
+                    else:
+                        ok = cycle(cfg, sink, cp, full=due_full, only=None)
                 except Exception:
                     log.exception("Cycle failed")
                     ok = False
@@ -98,7 +118,7 @@ def run_forever(cfg: Config, sink: Sink, cp: Checkpoint) -> None:
                 if due_full:
                     last_full_day = now.date()
                 next_run = now + interval
-            time.sleep(20)
+            time.sleep(cfg.schedule.poll_seconds)
     finally:
         stop.set()
 
@@ -133,7 +153,7 @@ def main() -> None:
     elif args.db:
         sink = PgSink(args.db)
     else:
-        sink = HttpSink(cfg.cloud.ingest_url, cfg.cloud.heartbeat_url, cfg.cloud.api_key)
+        sink = HttpSink(cfg.cloud.ingest_url, cfg.cloud.heartbeat_url, cfg.cloud.api_key, cfg.cloud.ca_file)
     try:
         if args.once:
             raise SystemExit(0 if cycle(cfg, sink, cp, args.full, only) else 1)

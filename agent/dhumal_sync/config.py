@@ -26,6 +26,7 @@ class CloudConfig:
     ingest_url: str = ""
     heartbeat_url: str = ""
     api_key: str = ""
+    ca_file: str = ""               # only where the office firewall inspects HTTPS; see config.example.toml
 
 
 @dataclass
@@ -35,6 +36,7 @@ class ScheduleConfig:
     office_end: str = "21:00"
     full_refresh_at: str = "02:00"
     heartbeat_minutes: int = 5
+    poll_seconds: int = 10          # how often to ask whether someone pressed "Sync now"
     recent_days: int = 60           # re-read window for entities without UpdateDate
 
 

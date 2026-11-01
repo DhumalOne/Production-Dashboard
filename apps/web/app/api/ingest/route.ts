@@ -5,7 +5,7 @@ import type postgres from "postgres";
 import { dbIngest } from "@/lib/db";
 
 // The office sync agent posts here (outbound HTTPS from the office; nothing in the cloud can reach SAP).
-// Body: gzipped JSON, one of {type: "batch" | "cycle" | "heartbeat"} (see agent/dhumal_sync/sink.py).
+// Body: JSON, usually gzipped, one of {type: "batch" | "cycle" | "heartbeat" | "poll" | "progress"} (see agent/dhumal_sync/sink.py).
 // Auth: x-api-key must match one of INGEST_API_KEYS (comma-separated, so keys can be rotated).
 
 export const maxDuration = 60;
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   }
 
   const type = (payload as { type?: unknown })?.type;
-  if (type !== "batch" && type !== "cycle" && type !== "heartbeat") {
+  if (type !== "batch" && type !== "cycle" && type !== "heartbeat" && type !== "poll" && type !== "progress") {
     return NextResponse.json({ error: "unknown payload type" }, { status: 400 });
   }
 
